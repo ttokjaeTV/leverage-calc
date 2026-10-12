@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>레버리지 ETF 계산기 · 똑재TV</title>
+<meta name="description" content="지수가 오르내리다 제자리로 와도 레버리지·인버스 ETF는 왜 손해일까? 변동성 손실(음의 복리)을 일별로 계산하고, 지수 목표가를 레버리지 ETF 가격으로 환산해 봅니다.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+<style>
+  :root {
+    --bg: #F5EFE6;
+    --bg-alt: #EFE7DA;
+    --ink: #1A1A1A;
+    --ink-soft: #4A4A4A;
+    --ink-mute: #8B8276;
+    --accent: #D9542B;
+    --accent-soft: #F4D5C4;
+    --border: #E5DCC8;
+    --white: #FBF7F0;
+    --brown: #8B6F47;
+    --beige-gold: #C4A57B;
+    --dark-warm: #3A2F26;
+    --dark-warm-soft: #5A4A3D;
+    --green: #4A5A4A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    padding: 32px 24px;
+    font-weight: 600;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+
+  /* 헤더 */
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 40px; }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 40px; height: 40px; background: var(--dark-warm); color: var(--white);
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 20px;
+  }
+  .logo-name { font-size: 18px; font-weight: 900; letter-spacing: -0.5px; }
+  .logo-sub { font-size: 10px; color: var(--ink-mute); font-weight: 700; letter-spacing: 1px; }
+
+  /* 히어로 */
+  .hero { margin-bottom: 32px; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--white); border: 1.5px solid var(--accent); color: var(--accent);
+    padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
+    margin-bottom: 20px;
+  }
+  .tag .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
+  .hero-title { font-size: 64px; font-weight: 900; letter-spacing: -2.5px; line-height: 1.05; margin-bottom: 20px; }
+  .underline-mark { background: linear-gradient(transparent 60%, var(--accent-soft) 60%); padding: 0 4px; }
+  .hero-desc { font-size: 17px; color: var(--ink-soft); font-weight: 500; line-height: 1.7; }
+
+  /* 상단 CTA */
+  .top-cta {
+    background: var(--bg-alt); border: 1px solid var(--border); border-radius: 16px;
+    padding: 18px 24px; margin-bottom: 32px;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .top-cta-text { font-size: 14px; color: var(--ink-soft); font-weight: 600; }
+  .top-cta-links { display: flex; gap: 8px; flex-wrap: wrap; }
+  .top-cta-link {
+    display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px;
+    font-size: 13px; font-weight: 700; text-decoration: none;
+    background: var(--white); border: 1.5px solid var(--border); color: var(--ink);
+  }
+  .top-cta-link.primary { background: var(--accent); color: var(--white); border-color: var(--accent); }
+  .naver-mark {
+    display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px;
+    background: #03C75A; color: #FFFFFF; font-weight: 900; font-size: 11px; border-radius: 3px;
+    line-height: 1; letter-spacing: -0.5px; flex-shrink: 0;
+  }
+
+  /* 카드 / 스텝 */
+  .card { background: var(--white); border: 1px solid var(--border); border-radius: 20px; padding: 28px; margin-bottom: 32px; }
+  .step-label { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .step-line { width: 28px; height: 2px; background: var(--accent); }
+  .step-text { font-size: 12px; font-weight: 800; letter-spacing: 1.5px; color: var(--accent); }
+  .card-title { font-size: 24px; font-weight: 900; letter-spacing: -0.6px; margin-bottom: 6px; }
+  .card-subtitle { font-size: 14px; color: var(--ink-mute); font-weight: 500; margin-bottom: 22px; line-height: 1.6; }
+
+  /* 모드 탭 */
+  .mode-tabs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .mode-tab {
+    text-align: left; background: var(--white); border: 1.5px solid var(--border); border-radius: 16px;
+    padding: 18px 20px; cursor: pointer; font-family: inherit; color: var(--ink);
+    transition: all 0.15s ease;
+  }
+  .mode-tab:hover { border-color: var(--accent); }
+  .mode-tab .mt-num { font-size: 11px; font-weight: 800; letter-spacing: 1px; color: var(--ink-mute); margin-bottom: 6px; display: block; }
+  .mode-tab .mt-title { font-size: 18px; font-weight: 900; letter-spacing: -0.4px; display: block; margin-bottom: 4px; }
+  .mode-tab .mt-desc { font-size: 13px; color: var(--ink-mute); font-weight: 500; display: block; }
+  .mode-tab.active { background: var(--dark-warm); border-color: var(--dark-warm); color: var(--white); }
+  .mode-tab.active .mt-num { color: var(--accent-soft); }
+  .mode-tab.active .mt-desc { color: #D9D2C5; }
+
+  /* 입력 */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .input-group { margin-bottom: 18px; }
+  .input-group:last-child { margin-bottom: 0; }
+  .label { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; color: var(--ink-soft); margin-bottom: 8px; }
+  input[type=number], select {
+    background: var(--white); border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; font-family: inherit; font-size: 16px; color: var(--ink); font-weight: 700;
+    transition: all 0.15s ease; width: 100%;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .input-hint { font-size: 12px; color: var(--ink-mute); font-weight: 600; margin-top: 6px; line-height: 1.55; }
+  .input-wrap { position: relative; }
+  .input-wrap input { padding-right: 130px; }
+  .input-unit { position: absolute; top: 50%; transform: translateY(-50%); left: 0; pointer-events: none;
+    font-size: 15px; font-weight: 700; color: var(--ink-mute); white-space: nowrap; visibility: hidden; }
+  .input-currency {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 800;
+    padding: 5px 10px; border-radius: 6px; pointer-events: none; letter-spacing: -0.3px;
+    white-space: nowrap; max-width: 110px; overflow: hidden; text-overflow: ellipsis;
+  }
+  .input-currency.empty { background: transparent; color: var(--ink-mute); font-weight: 600; }
+  .sub-card { background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+  .sub-card-title { font-size: 15px; font-weight: 800; margin-bottom: 14px; letter-spacing: -0.3px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip {
+    background: var(--white); border: 1.5px solid var(--border); color: var(--ink-soft);
+    border-radius: 999px; padding: 5px 12px; font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: var(--white); }
+  .is-hidden { display: none !important; }
+  .fixed-note {
+    background: var(--accent-soft); color: var(--accent); border-radius: 10px; padding: 12px 14px;
+    font-size: 13.5px; font-weight: 700; line-height: 1.55;
+  }
+  .radio-row { display: flex; flex-direction: column; gap: 8px; }
+  .radio-row.h { flex-direction: row; }
+  .radio-row.h .radio-opt { flex: 1; }
+  .radio-opt {
+    display: flex; gap: 10px; align-items: flex-start; background: var(--white); border: 1.5px solid var(--border);
+    border-radius: 12px; padding: 12px 14px; cursor: pointer; transition: all 0.15s ease;
+  }
+  .radio-opt:hover { border-color: var(--accent); }
+  .radio-opt input { margin-top: 4px; accent-color: var(--accent); }
+  .radio-opt .ro-title { font-size: 14px; font-weight: 800; }
+  .radio-opt .ro-desc { font-size: 12.5px; color: var(--ink-mute); font-weight: 500; margin-top: 2px; }
+  .radio-opt.on { border-color: var(--accent); background: #FCEFE6; }
+  .scen-body { margin-top: 18px; padding-top: 18px; border-top: 1px dashed var(--border); }
+
+  /* 결과 */
+  .verdict {
+    background: var(--dark-warm); color: var(--white); border-radius: 20px; padding: 30px 32px; margin-bottom: 20px;
+  }
+  .verdict-label { font-size: 12px; font-weight: 800; letter-spacing: 1.5px; color: var(--accent-soft); margin-bottom: 10px; }
+  .verdict-main { font-size: 30px; font-weight: 900; letter-spacing: -0.8px; line-height: 1.3; }
+  .verdict-main .hl { color: #FFB38F; }
+  .verdict-sub { font-size: 15px; color: #D9D2C5; font-weight: 500; margin-top: 12px; line-height: 1.7; }
+  .verdict-sub strong { color: var(--white); }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+  .stat-card { background: var(--white); border: 1px solid var(--border); border-radius: 16px; padding: 22px; }
+  .stat-card.accent { background: var(--accent); border-color: var(--accent); color: var(--white); }
+  .stat-card.accent .stat-label, .stat-card.accent .stat-sub { color: #FDE3D6; }
+  .stat-card.dark { background: var(--dark-warm-soft); border-color: var(--dark-warm-soft); color: var(--white); }
+  .stat-card.dark .stat-label, .stat-card.dark .stat-sub { color: #D9D2C5; }
+  .stat-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--ink-mute); margin-bottom: 8px; }
+  .stat-value { font-size: 28px; font-weight: 900; letter-spacing: -1px; line-height: 1.15; }
+  .stat-sub { font-size: 13px; color: var(--ink-mute); margin-top: 6px; font-weight: 500; line-height: 1.5; }
+
+  .chart-title { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; margin-bottom: 4px; }
+  .chart-subtitle { font-size: 13px; color: var(--ink-mute); font-weight: 500; margin-bottom: 18px; line-height: 1.6; }
+  .chart-container { position: relative; height: 360px; width: 100%; }
+
+  /* 표 */
+  .table-wrap { overflow-x: auto; margin-top: 16px; border-radius: 12px; }
+  .table-wrap.tall { max-height: 520px; overflow-y: auto; }
+  .table-wrap.tall thead th { position: sticky; top: 0; z-index: 1; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 760px; }
+  .data-table th {
+    background: var(--bg-alt); padding: 12px 10px; text-align: right; font-weight: 700; color: var(--ink-soft);
+    font-size: 11.5px; border-bottom: 1.5px solid var(--border); white-space: nowrap;
+  }
+  .data-table th:first-child { text-align: center; }
+  .data-table td {
+    padding: 11px 10px; text-align: right; border-bottom: 1px solid var(--border);
+    font-weight: 600; color: var(--ink); white-space: nowrap;
+  }
+  .data-table td:first-child { text-align: center; font-weight: 800; color: var(--accent); }
+  .data-table tbody tr:hover { background: var(--bg-alt); }
+  .data-table .highlight-row { background: var(--accent-soft); }
+  .data-table .highlight-row td { font-weight: 800; }
+  .data-table td.c-accent { color: var(--accent); font-weight: 800; }
+  .data-table td.c-brown { color: var(--brown); }
+  .data-table td.c-green { color: var(--green); }
+  .data-table td.c-mute { color: var(--ink-mute); }
+  .scen-table { min-width: 560px; }
+  .tag-mini {
+    display: inline-block; font-size: 10.5px; font-weight: 800; padding: 2px 8px; border-radius: 999px;
+    background: var(--accent); color: var(--white); margin-left: 6px; vertical-align: 1px;
+  }
+  .tag-mini.base { background: var(--brown); }
+  .approx-note { background: var(--bg); border: 1px dashed var(--beige-gold); border-radius: 14px; padding: 14px 16px; font-size: 13.5px; font-weight: 600; color: var(--ink-soft); line-height: 1.7; margin-top: 18px; }
+  .approx-note b { color: var(--dark-warm); }
+
+  /* 인사이트 */
+  .insight-box { background: var(--dark-warm); color: var(--white); border-radius: 20px; padding: 36px; margin-bottom: 24px; }
+  .insight-label { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .insight-label-text { font-size: 12px; font-weight: 800; letter-spacing: 1.5px; color: var(--accent-soft); }
+  .insight-title { font-size: 24px; font-weight: 900; margin-bottom: 16px; letter-spacing: -0.5px; line-height: 1.35; }
+  .insight-desc { font-size: 15px; line-height: 1.75; color: #D9D2C5; font-weight: 500; }
+  .insight-desc strong { color: var(--white); }
+  .insight-desc + .insight-desc { margin-top: 12px; }
+  .insight-cta {
+    margin-top: 28px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.12);
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+  }
+  .insight-cta-text { font-size: 14px; color: #D9D2C5; font-weight: 600; margin-right: 8px; }
+  .cta-link {
+    display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 700; text-decoration: none; transition: all 0.2s ease; letter-spacing: -0.2px;
+  }
+  .cta-link.primary { background: var(--accent); color: var(--white); }
+  .cta-link.primary:hover { background: #E66740; transform: translateY(-1px); }
+  .cta-link.secondary { background: rgba(255,255,255,0.08); color: var(--white); border: 1px solid rgba(255,255,255,0.15); }
+  .cta-link.secondary:hover { background: rgba(255,255,255,0.15); transform: translateY(-1px); }
+
+  .link-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn {
+    background: var(--dark-warm); color: var(--white); border: none; padding: 11px 18px; border-radius: 12px;
+    font-family: inherit; font-weight: 700; cursor: pointer; transition: all 0.15s ease; font-size: 14px;
+    display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+  }
+  .btn:hover { background: var(--accent); }
+  .btn.ghost { background: var(--white); color: var(--ink); border: 1.5px solid var(--border); }
+  .btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* 제도 안내 · 계산 방법 */
+  .rule-list, .method-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .rule-list li, .method-list li { position: relative; padding-left: 18px; font-size: 14.5px; font-weight: 500; color: var(--ink-soft); line-height: 1.7; }
+  .rule-list li::before, .method-list li::before { content: ''; position: absolute; left: 2px; top: 10px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  .method-list.mute li::before { background: var(--beige-gold); }
+  .rule-list b, .method-list b { color: var(--ink); font-weight: 800; }
+  .sub-h { font-size: 15px; font-weight: 800; margin: 22px 0 10px; letter-spacing: -0.3px; }
+  .src { font-size: 12px; color: var(--ink-mute); font-weight: 600; margin-top: 14px; line-height: 1.8; word-break: keep-all; }
+  .src a { color: var(--brown); }
+  .coef-table { min-width: 0; max-width: 520px; }
+  .txt-link { color: var(--accent); font-weight: 800; text-decoration: none; }
+
+  .hub-back { display: inline-block; font-size: 13px; color: var(--ink-mute); font-weight: 600; text-decoration: none; margin-bottom: 12px; }
+  .hub-back:hover { color: var(--accent); }
+  footer { text-align: center; font-size: 12.5px; color: var(--ink-mute); font-weight: 500; line-height: 1.8; padding: 24px 0 8px; }
+
+  @media (max-width: 1100px) {
+    .stat-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 768px) {
+    body { padding: 16px 12px; }
+    header { margin-bottom: 24px; }
+    .card { padding: 18px 16px !important; margin-bottom: 20px !important; border-radius: 16px !important; }
+    .hero-title { font-size: 34px !important; letter-spacing: -1.2px !important; line-height: 1.18 !important; }
+    .hero-desc { font-size: 15px; }
+    .hero-desc br { display: none; }
+    .top-cta { flex-direction: column; align-items: stretch; padding: 16px; }
+    .top-cta-links { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .top-cta-link { justify-content: center; }
+    .mode-tabs { grid-template-columns: 1fr; gap: 8px; }
+    .mode-tab { padding: 14px 16px; }
+    .mode-tab .mt-title { font-size: 16px; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr !important; gap: 14px !important; }
+    .radio-row.h { flex-direction: column; }
+    .sub-card { padding: 16px; }
+    .input-wrap input { padding-right: 112px; }
+    .input-currency { max-width: 96px; font-size: 12px; }
+    .card-title { font-size: 20px; }
+    .verdict { padding: 22px 18px; border-radius: 16px; }
+    .verdict-main { font-size: 22px; letter-spacing: -0.5px; }
+    .verdict-sub { font-size: 14px; }
+    .stat-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+    .stat-card { padding: 16px !important; border-radius: 14px !important; }
+    .stat-value { font-size: 21px !important; }
+    .stat-sub { font-size: 12px; }
+    .chart-title { font-size: 15px; line-height: 1.4; }
+    .chart-container { height: 280px !important; }
+    .insight-box { padding: 24px 18px; border-radius: 16px; }
+    .insight-title { font-size: 19px !important; }
+    .insight-cta { flex-direction: column; align-items: stretch; }
+    .cta-link { justify-content: center; }
+    .table-wrap { margin: 16px -16px 0; padding: 0 16px; -webkit-overflow-scrolling: touch; }
+    .table-wrap.tall { max-height: 440px; }
+    .data-table { font-size: 11.5px; min-width: 640px; }
+    .scen-table { min-width: 480px; }
+    .coef-table { min-width: 0; }
+    .data-table th { padding: 8px 6px; font-size: 10.5px; }
+    .data-table td { padding: 8px 6px; }
+    .rule-list li, .method-list li { font-size: 13.5px; }
+    .btn-row { width: 100%; }
+    .btn-row .btn { flex: 1; justify-content: center; }
+  }
+  @media (max-width: 380px) {
+    .hero-title { font-size: 29px !important; }
+    .stat-grid { grid-template-columns: 1fr; }
+    .top-cta-links { grid-template-columns: 1fr !important; }
+  }
+
+  /* 표 내려받기 (CSV·엑셀) */
+  .dl-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 12px; }
+  .dl-btn { font-family: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--accent, #D9542B); background: #FBF7F0; color: var(--accent, #D9542B); cursor: pointer; line-height: 1.2; }
+  .dl-btn:hover { background: var(--accent, #D9542B); color: #fff; }
+  .dl-note { font-size: 12px; color: #8B7B6B; font-weight: 600; word-break: keep-all; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <a href="https://ttokjaetv.github.io/" class="hub-back">← 똑재TV 계산기 모음</a>
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">똑</div>
+      <div>
+        <div class="logo-name">똑재TV</div>
+        <div class="logo-sub">LEVERAGE ETF CALCULATOR</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="hero">
+    <span class="tag"><span class="dot"></span>레버리지 ETF 계산기</span>
+    <h1 class="hero-title">
+      지수는 제자리인데,<br>
+      <span class="underline-mark">3배 ETF는 왜 손해</span>일까?
+    </h1>
+    <p class="hero-desc">
+      레버리지·인버스 ETF는 '하루' 수익률의 배수를 따라가는 상품입니다. 며칠, 몇 달을 들고 있으면 결과가 지수 × 배율과 달라집니다.<br>
+      지수가 오르내릴 때 얼마나 깎이는지, 지수 목표가가 ETF 가격으로는 얼마인지 숫자로 확인해 보세요.
+    </p>
+  </div>
+
+  <div class="top-cta">
+    <div class="top-cta-text">💡 <strong>사기 전에 위험부터</strong> 숫자로 확인하세요. ETF 구조와 노후 설계 이야기는 똑재TV에서 매주 만나보세요.</div>
+    <div class="top-cta-links">
+      <a href="https://www.youtube.com/@ttok_jae" target="_blank" rel="noopener" class="top-cta-link primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        똑재TV 구독하기
+      </a>
+      <a href="https://cafe.naver.com/ttokjae" target="_blank" rel="noopener" class="top-cta-link">
+        <span class="naver-mark">N</span>
+        평생 ETF 투자 카페
+      </a>
+    </div>
+  </div>
+
+  <!-- STEP 01 : 모드 -->
+  <div class="card">
+    <div class="step-label"><div class="step-line"></div><span class="step-text">STEP 01 / 무엇이 궁금하세요?</span></div>
+    <h2 class="card-title">계산 방식을 고르세요</h2>
+    <p class="card-subtitle">두 계산 모두 '매일 배율만큼 움직이고, 그 결과가 곱해지며 쌓인다'는 같은 원리로 계산합니다.</p>
+    <div class="mode-tabs" role="tablist">
+      <button class="mode-tab active" data-mode="decay" role="tab">
+        <span class="mt-num">MODE 1</span>
+        <span class="mt-title">변동성 손실 시뮬레이터</span>
+        <span class="mt-desc">지수가 오르내리면 레버리지 ETF는 얼마나 깎이나</span>
+      </button>
+      <button class="mode-tab" data-mode="target" role="tab">
+        <span class="mt-num">MODE 2</span>
+        <span class="mt-title">지수 목표가 → ETF 가격</span>
+        <span class="mt-desc">"지수가 ○○까지 가면 3배 ETF는 얼마?"</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===================== MODE 1 ===================== -->
+  <div id="pane-decay">
+    <div class="card">
+      <div class="step-label"><div class="step-line"></div><span class="step-text">STEP 02 / 조건 입력</span></div>
+      <h2 class="card-title">상품과 지수 흐름을 정하세요</h2>
+      <p class="card-subtitle">투자금은 <strong>만원 단위</strong>입니다. 일수는 장이 열리는 날(거래일) 기준이며, 1년은 약 252거래일입니다.</p>
+
+      <div class="grid-3">
+        <div class="input-group">
+          <label class="label" for="amt">투자금</label>
+          <div class="input-wrap">
+            <input type="number" id="amt" data-unit="만원" value="1000" step="100" min="0">
+            <span class="input-currency" id="amt-display">1,000만원</span>
+          </div>
+          <div class="chips" data-target="amt">
+            <button class="chip" data-v="100">100만</button>
+            <button class="chip" data-v="1000">1,000만</button>
+            <button class="chip" data-v="3000">3,000만</button>
+          </div>
+        </div>
+        <div class="input-group">
+          <label class="label" for="lev">배율</label>
+          <div class="input-wrap">
+            <input type="number" id="lev" data-unit="배" value="3" step="0.5" min="-5" max="5">
+            <span class="input-currency" id="lev-display">3배 레버리지</span>
+          </div>
+          <div class="chips" data-target="lev">
+            <button class="chip" data-v="-1">−1 (인버스)</button>
+            <button class="chip" data-v="1">1배</button>
+            <button class="chip" data-v="2">2배</button>
+            <button class="chip" data-v="3">3배</button>
+          </div>
+          <div class="input-hint">직접 입력 가능(−5~5) · 음수는 인버스(지수 반대 방향)</div>
+        </div>
+        <div class="input-group">
+          <label class="label" for="fee">연 총보수</label>
+          <div class="input-wrap">
+            <input type="number" id="fee" data-unit="%" value="0.9" step="0.05" min="0" max="5">
+            <span class="input-currency" id="fee-display">연 0.90%</span>
+          </div>
+          <div class="input-hint">국내·미국 레버리지 ETF는 대략 0.5~1% 수준입니다. 실제 값은 상품 공시에서 확인하세요.</div>
+        </div>
+      </div>
+
+      <div class="sub-card" style="margin-top:20px;">
+        <div class="sub-card-title">지수가 어떻게 움직인다고 가정할까요?</div>
+        <div class="radio-row h">
+          <label class="radio-opt on" id="sc-alt-opt">
+            <input type="radio" name="sc" value="alt" checked>
+            <span><span class="ro-title">매일 +a% / −a% 번갈아</span>
+            <span class="ro-desc" style="display:block;">오르고 내리기를 똑같은 폭으로 반복하는 가장 단순한 횡보장</span></span>
+          </label>
+          <label class="radio-opt" id="sc-path-opt">
+            <input type="radio" name="sc" value="path">
+            <span><span class="ro-title">총 변화 X% · 일 변동성 Y%</span>
+            <span class="ro-desc" style="display:block;">기간 말 지수가 정확히 X%가 되도록, 매일 ±Y%씩 출렁이며 가는 길</span></span>
+          </label>
+        </div>
+
+        <div class="scen-body" id="sc-alt-body">
+          <div class="grid-2">
+            <div class="input-group">
+              <label class="label" for="alt-a">하루 등락폭 a</label>
+              <div class="input-wrap">
+                <input type="number" id="alt-a" data-unit="%" value="3" step="0.5" min="0.1" max="30">
+                <span class="input-currency" id="alt-a-display">±3%</span>
+              </div>
+              <div class="chips" data-target="alt-a">
+                <button class="chip" data-v="1">1%</button>
+                <button class="chip" data-v="2">2%</button>
+                <button class="chip" data-v="3">3%</button>
+                <button class="chip" data-v="5">5%</button>
+              </div>
+            </div>
+            <div class="input-group">
+              <label class="label" for="alt-n">기간(거래일)</label>
+              <div class="input-wrap">
+                <input type="number" id="alt-n" data-unit="일" value="60" step="10" min="2" max="2520">
+                <span class="input-currency" id="alt-n-display">약 3개월</span>
+              </div>
+              <div class="chips" data-target="alt-n">
+                <button class="chip" data-v="20">20일</button>
+                <button class="chip" data-v="60">60일</button>
+                <button class="chip" data-v="120">120일</button>
+                <button class="chip" data-v="252">252일(1년)</button>
+              </div>
+            </div>
+          </div>
+          <div class="input-hint">첫날 +a%, 다음 날 −a%를 번갈아 반복합니다. +3% 뒤 −3%면 103 → 99.91로, 지수 자체도 조금씩 줄어듭니다.</div>
+        </div>
+
+        <div class="scen-body is-hidden" id="sc-path-body">
+          <div class="grid-3">
+            <div class="input-group">
+              <label class="label" for="px">기간 동안 지수 총 변화 X</label>
+              <div class="input-wrap">
+                <input type="number" id="px" data-unit="%" value="10" step="1" min="-90" max="500">
+                <span class="input-currency" id="px-display">+10%</span>
+              </div>
+              <div class="chips" data-target="px">
+                <button class="chip" data-v="-20">−20%</button>
+                <button class="chip" data-v="0">0%</button>
+                <button class="chip" data-v="10">+10%</button>
+                <button class="chip" data-v="30">+30%</button>
+              </div>
+            </div>
+            <div class="input-group">
+              <label class="label" for="py">일 변동성 Y</label>
+              <div class="input-wrap">
+                <input type="number" id="py" data-unit="%" value="1.5" step="0.1" min="0" max="15">
+                <span class="input-currency" id="py-display">일 ±1.5%</span>
+              </div>
+              <div class="chips" data-target="py">
+                <button class="chip" data-v="0.5">0.5%</button>
+                <button class="chip" data-v="1">1%</button>
+                <button class="chip" data-v="1.5">1.5%</button>
+                <button class="chip" data-v="2">2%</button>
+              </div>
+            </div>
+            <div class="input-group">
+              <label class="label" for="pn">기간(거래일)</label>
+              <div class="input-wrap">
+                <input type="number" id="pn" data-unit="일" value="252" step="10" min="2" max="2520">
+                <span class="input-currency" id="pn-display">약 1년</span>
+              </div>
+              <div class="chips" data-target="pn">
+                <button class="chip" data-v="60">60일</button>
+                <button class="chip" data-v="126">126일</button>
+                <button class="chip" data-v="252">1년</button>
+                <button class="chip" data-v="756">3년</button>
+              </div>
+            </div>
+          </div>
+          <div class="fixed-note" style="margin-top:14px;">길을 만드는 방법: 상승일과 하락일을 하루씩 번갈아 놓습니다. 상승일은 <b>기본 추세 + Y%</b>, 하락일은 <b>기본 추세 − Y%</b>이고, 기본 추세는 기간 마지막 날 지수가 정확히 X%가 되도록 거꾸로 계산합니다. 무작위가 아니라 늘 같은 길이 나오므로, 같은 조건이면 누가 계산해도 같은 답이 나옵니다.</div>
+          <div class="input-hint">일 변동성 Y는 하루 등락의 표준적인 크기입니다. 큰 지수는 평소 하루 1% 안팎, 기술주 지수는 그보다 크게 움직이는 편이며, 급락장에서는 몇 배로 커지기도 합니다.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-label"><div class="step-line"></div><span class="step-text">STEP 03 / 결과</span></div>
+    <div class="verdict">
+      <div class="verdict-label" id="a-v-label">RESULT</div>
+      <div class="verdict-main" id="a-v-main">-</div>
+      <div class="verdict-sub" id="a-v-sub"></div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-label">기초지수 수익률</div><div class="stat-value" id="a1-value">-</div><div class="stat-sub" id="a1-sub"></div></div>
+      <div class="stat-card"><div class="stat-label" id="a2-label">단순 배율 기대치</div><div class="stat-value" id="a2-value">-</div><div class="stat-sub" id="a2-sub"></div></div>
+      <div class="stat-card accent"><div class="stat-label" id="a3-label">실제 ETF 수익률</div><div class="stat-value" id="a3-value">-</div><div class="stat-sub" id="a3-sub"></div></div>
+      <div class="stat-card dark"><div class="stat-label">변동성으로 잃은 몫</div><div class="stat-value" id="a4-value">-</div><div class="stat-sub" id="a4-sub"></div></div>
+    </div>
+
+    <div class="card">
+      <h3 class="chart-title">하루하루 쌓인 길</h3>
+      <p class="chart-subtitle" id="a-chart-sub">-</p>
+      <div class="chart-container"><canvas id="a-chart"></canvas></div>
+      <div class="approx-note" id="a-approx">-</div>
+    </div>
+
+    <div class="card">
+      <div class="step-label"><div class="step-line"></div><span class="step-text">같은 길, 배율만 바꾸면</span></div>
+      <h3 class="chart-title">배율이 클수록 깎이는 몫이 빠르게 커집니다</h3>
+      <p class="chart-subtitle" id="a-cmp-sub">-</p>
+      <div class="table-wrap">
+        <table class="data-table scen-table">
+          <thead><tr><th>배율</th><th>단순 배율 기대</th><th>실제 ETF</th><th>차이</th><th>평가액</th></tr></thead>
+          <tbody id="a-cmp-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 class="chart-title">일별 상세 데이터</h3>
+      <p class="chart-subtitle" id="a-table-sub">-</p>
+      <div class="dl-bar">
+        <button type="button" class="dl-btn" id="a-dl-csv">CSV 내려받기</button>
+        <button type="button" class="dl-btn" id="a-dl-xlsx">엑셀(.xlsx) 내려받기</button>
+        <span class="dl-note">엑셀에는 일별 표와 배율 비교 표가 함께 들어갑니다 (수익률은 %, 금액은 원 단위 숫자)</span>
+      </div>
+      <div class="table-wrap tall">
+        <table class="data-table">
+          <thead><tr><th>일차</th><th>지수 하루</th><th>지수 누적</th><th>ETF 하루</th><th>ETF 누적</th><th>ETF 평가액</th><th>단순 배율 기대 평가액</th></tr></thead>
+          <tbody id="a-day-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODE 2 ===================== -->
+  <div id="pane-target" class="is-hidden">
+    <div class="card">
+      <div class="step-label"><div class="step-line"></div><span class="step-text">STEP 02 / 조건 입력</span></div>
+      <h2 class="card-title">지금 지수와 목표 지수를 넣으세요</h2>
+      <p class="card-subtitle">기본값은 <strong>계산 원리를 보여 주기 위한 예시 숫자</strong>입니다. 실제 지수와 ETF 가격을 넣어 보세요. 가격은 원·달러 어느 쪽이든 됩니다.</p>
+
+      <div class="grid-2" style="align-items:stretch;">
+        <div class="sub-card">
+          <div class="sub-card-title">지수</div>
+          <div class="input-group">
+            <label class="label" for="ci">현재 지수</label>
+            <div class="input-wrap">
+              <input type="number" id="ci" value="20000" step="100" min="0.01">
+              <span class="input-currency" id="ci-display">20,000</span>
+            </div>
+          </div>
+          <div class="input-group">
+            <label class="label" for="ti">목표 지수</label>
+            <div class="input-wrap">
+              <input type="number" id="ti" value="24000" step="100" min="0.01">
+              <span class="input-currency" id="ti-display">+20.0%</span>
+            </div>
+            <div class="chips" id="ti-chips">
+              <button class="chip" data-p="-20">−20%</button>
+              <button class="chip" data-p="-10">−10%</button>
+              <button class="chip" data-p="10">+10%</button>
+              <button class="chip" data-p="20">+20%</button>
+              <button class="chip" data-p="30">+30%</button>
+            </div>
+            <div class="input-hint">칩을 누르면 현재 지수 대비 그만큼 오르내린 목표 지수가 들어갑니다</div>
+          </div>
+        </div>
+        <div class="sub-card">
+          <div class="sub-card-title">레버리지 ETF</div>
+          <div class="grid-2" style="gap:12px;">
+            <div class="input-group">
+              <label class="label" for="ep">현재 ETF 가격</label>
+              <div class="input-wrap">
+                <input type="number" id="ep" data-unit="달러" value="100" step="any" min="0.01">
+                <span class="input-currency" id="ep-display">$100.00</span>
+              </div>
+            </div>
+            <div class="input-group">
+              <label class="label" for="unit">가격 단위</label>
+              <select id="unit"><option value="usd">달러 ($)</option><option value="krw">원</option></select>
+            </div>
+          </div>
+          <div class="input-group">
+            <label class="label" for="lev2">배율</label>
+            <div class="input-wrap">
+              <input type="number" id="lev2" data-unit="배" value="3" step="0.5" min="-5" max="5">
+              <span class="input-currency" id="lev2-display">3배 레버리지</span>
+            </div>
+            <div class="chips" data-target="lev2">
+              <button class="chip" data-v="-1">−1 (인버스)</button>
+              <button class="chip" data-v="1">1배</button>
+              <button class="chip" data-v="2">2배</button>
+              <button class="chip" data-v="3">3배</button>
+            </div>
+          </div>
+          <div class="input-group">
+            <label class="label" for="fee2">연 총보수</label>
+            <div class="input-wrap">
+              <input type="number" id="fee2" data-unit="%" value="0.9" step="0.05" min="0" max="5">
+              <span class="input-currency" id="fee2-display">연 0.90%</span>
+            </div>
+            <div class="input-hint">대략 0.5~1% 수준 · 상품 공시 확인. '오르내리며 간다' 계산에만 반영합니다</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-card" style="margin-top:20px;">
+        <div class="sub-card-title">목표 지수까지 어떻게 간다고 볼까요?</div>
+        <div class="radio-row h">
+          <label class="radio-opt on" id="route-wave-opt">
+            <input type="radio" name="route" value="wave" checked>
+            <span><span class="ro-title">오르내리며 간다</span>
+            <span class="ro-desc" style="display:block;">현실에 가까운 길. 매일 ±변동성만큼 출렁이며 목표에 도착</span></span>
+          </label>
+          <label class="radio-opt" id="route-jump-opt">
+            <input type="radio" name="route" value="jump">
+            <span><span class="ro-title">한 번에 곧장 간다</span>
+            <span class="ro-desc" style="display:block;">하루 만에 목표까지 가는 극단적 가정. ETF = 현재가 × (1 + 배율 × 지수 변화율)</span></span>
+          </label>
+        </div>
+        <div class="grid-2 scen-body">
+          <div class="input-group">
+            <label class="label" for="vol">일 변동성</label>
+            <div class="input-wrap">
+              <input type="number" id="vol" data-unit="%" value="1.5" step="0.1" min="0" max="15">
+              <span class="input-currency" id="vol-display">일 ±1.5%</span>
+            </div>
+            <div class="chips" data-target="vol">
+              <button class="chip" data-v="1">1%</button>
+              <button class="chip" data-v="1.5">1.5%</button>
+              <button class="chip" data-v="2">2%</button>
+              <button class="chip" data-v="3">3%</button>
+            </div>
+          </div>
+          <div class="input-group">
+            <label class="label" for="dn">걸리는 기간(거래일)</label>
+            <div class="input-wrap">
+              <input type="number" id="dn" data-unit="일" value="252" step="10" min="2" max="2520">
+              <span class="input-currency" id="dn-display">약 1년</span>
+            </div>
+            <div class="chips" data-target="dn">
+              <button class="chip" data-v="60">60일</button>
+              <button class="chip" data-v="126">126일</button>
+              <button class="chip" data-v="252">1년</button>
+              <button class="chip" data-v="756">3년</button>
+            </div>
+          </div>
+        </div>
+        <div class="input-hint">두 길을 모두 계산해 비교합니다. 고른 길이 결과 맨 위에 나옵니다. 오르내림 경로는 MODE 1의 'X%·Y%' 방식(상승일·하락일을 번갈아 놓고 마지막 날 목표 지수에 정확히 도착)과 같습니다.</div>
+      </div>
+    </div>
+
+    <div class="step-label"><div class="step-line"></div><span class="step-text">STEP 03 / 결과</span></div>
+    <div class="verdict">
+      <div class="verdict-label" id="b-v-label">RESULT</div>
+      <div class="verdict-main" id="b-v-main">-</div>
+      <div class="verdict-sub" id="b-v-sub"></div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-label">지수 변화</div><div class="stat-value" id="b1-value">-</div><div class="stat-sub" id="b1-sub"></div></div>
+      <div class="stat-card" id="b2-card"><div class="stat-label">한 번에 곧장 갈 때</div><div class="stat-value" id="b2-value">-</div><div class="stat-sub" id="b2-sub"></div></div>
+      <div class="stat-card accent" id="b3-card"><div class="stat-label">오르내리며 갈 때</div><div class="stat-value" id="b3-value">-</div><div class="stat-sub" id="b3-sub"></div></div>
+      <div class="stat-card dark"><div class="stat-label">두 길의 차이</div><div class="stat-value" id="b4-value">-</div><div class="stat-sub" id="b4-sub"></div></div>
+    </div>
+
+    <div class="card">
+      <h3 class="chart-title">오르내리며 갈 때 ETF 가격의 길</h3>
+      <p class="chart-subtitle" id="b-chart-sub">-</p>
+      <div class="chart-container"><canvas id="b-chart"></canvas></div>
+    </div>
+
+    <div class="card">
+      <div class="step-label"><div class="step-line"></div><span class="step-text">변동성별 비교</span></div>
+      <h3 class="chart-title">같은 목표 지수, 출렁임만 다르면?</h3>
+      <p class="chart-subtitle" id="b-tbl-sub">-</p>
+      <div class="dl-bar">
+        <button type="button" class="dl-btn" id="b-dl-csv">CSV 내려받기</button>
+        <button type="button" class="dl-btn" id="b-dl-xlsx">엑셀(.xlsx) 내려받기</button>
+        <span class="dl-note">엑셀에는 변동성별 표와 일별 경로가 함께 들어갑니다 (가격은 입력한 단위 숫자)</span>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table scen-table">
+          <thead><tr><th>지수가 가는 길</th><th>예상 ETF 가격</th><th>ETF 수익률</th><th>곧장 대비</th></tr></thead>
+          <tbody id="b-tbl-body"></tbody>
+        </table>
+      </div>
+      <p class="input-hint" style="margin-top:12px;"><b>매일 같은 비율로 꾸준히</b>는 출렁임 없이 매일 똑같이 오르거나 내리는 길입니다. 한 방향으로 꾸준히 가는 장에서는 레버리지 ETF가 '곧장' 계산보다 더 많이 벌거나 덜 잃을 수도 있습니다. 결과를 가르는 건 방향만이 아니라 <b>가는 길</b>입니다.</p>
+    </div>
+  </div>
+
+  <!-- 제도 안내 -->
+  <div class="card">
+    <div class="step-label"><div class="step-line"></div><span class="step-text">사기 전에 꼭 확인할 것</span></div>
+    <h3 class="chart-title">레버리지 ETF, 아무나 바로 살 수 있는 상품이 아닙니다</h3>
+    <p class="chart-subtitle">위험이 큰 상품이라 처음 거래하는 개인투자자에게 교육·예탁금 요건이 붙어 있습니다. <b>2026년 10월 확인</b> 기준이며, 제도가 자주 바뀌고 증권사마다 세부 적용이 다를 수 있으니 거래 전 증권사·금융투자협회 안내로 다시 확인하세요.</p>
+    <ul class="rule-list">
+      <li><b>국내 상장 레버리지 ETF</b> — 처음 거래하려면 금융투자협회 온라인 <b>사전교육(1시간 이상)</b>을 이수하고 <b>기본예탁금 1,000만원 이상</b>을 맡겨야 합니다.</li>
+      <li><b>해외 상장 레버리지 ETF</b>(예: 미국 3배 ETF) — 2025년 12월 15일부터 사전교육이, 2026년 5월 22일부터 <b>기본예탁금 1,000만원</b>이 처음 거래하는 투자자에게 적용됩니다. 이전에 거래한 적이 있으면 제외됩니다.</li>
+      <li><b>단일종목 레버리지 ETF</b>(국내·해외) — 2026년 7월 31일부터 기본예탁금이 <b>현금 3,000만원</b>으로 올라갔고, 사전교육도 심화 과정을 더해 총 3시간으로 늘었습니다.</li>
+      <li><b>연금저축·IRP에서는 레버리지·인버스 ETF를 살 수 없습니다.</b> 노후 자금 계좌라 '장기투자에 적합하지 않은 상품'으로 보고 매수 대상에서 뺐기 때문입니다. 노후 자금을 굴리는 계좌에서 막아 둔 상품이라는 점 자체가 이 상품의 성격을 말해 줍니다.</li>
+    </ul>
+    <p class="src">근거: <a href="https://news.bizwatch.co.kr/article/market/2025/11/17/0025" target="_blank" rel="noopener">비즈워치 2025.11.17 (해외 레버리지 사전교육·국내 기본예탁금 1,000만원)</a> · <a href="https://www.heraldk.com/article/2026052005390064971" target="_blank" rel="noopener">헤럴드경제 2026.5.20 (해외 레버리지 기본예탁금)</a> · <a href="https://biz.sbs.co.kr/amp/article/20000325011" target="_blank" rel="noopener">SBS Biz 2026.7.28 (단일종목 레버리지 3,000만원·교육 3시간)</a> · <a href="https://www.sateconomy.co.kr/news/view/179588309749316" target="_blank" rel="noopener">금융위 연금저축 ETF 업무지침 보도(2017)</a> · <a href="https://www.hankyung.com/article/202512016000Q" target="_blank" rel="noopener">한국경제 2025.12 (IRP 레버리지·인버스 불가)</a></p>
+  </div>
+
+  <div class="card">
+    <div class="link-row">
+      <div>
+        <h3 class="chart-title">이 결과 공유하기</h3>
+        <p class="chart-subtitle" style="margin-bottom:0;">결과 요약을 글로 복사하거나, 입력값이 담긴 주소를 복사해 카페 댓글·메모에 붙여넣으세요.</p>
+      </div>
+      <div class="btn-row">
+        <button class="btn ghost" id="copy-result">결과 복사</button>
+        <button class="btn" id="copy-link">링크 복사</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="insight-box">
+    <div class="insight-label">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D9542B" stroke-width="2"><path d="M12 3l1.9 5.8L20 10l-4.5 3.3L17 20l-5-3.5L7 20l1.5-6.7L4 10l6.1-1.2L12 3z"/></svg>
+      <span class="insight-label-text">KEY INSIGHT</span>
+    </div>
+    <h3 class="insight-title" id="insight-title">-</h3>
+    <p class="insight-desc" id="insight-desc">-</p>
+    <p class="insight-desc">레버리지·인버스 ETF는 <strong>하루 수익률의 배수</strong>를 목표로 만든 상품입니다. 그래서 하루가 아니라 몇 주, 몇 달을 들고 있으면 지수 × 배율과 결과가 달라지고, 지수가 오르내릴수록 대체로 불리해집니다. 노후 자금을 모으는 연금저축·IRP에서 아예 살 수 없게 막아 둔 것도 같은 이유입니다. 손실 뒤 원금 회복이 얼마나 어려운지는 <a class="txt-link" style="color:#FFB38F;" href="https://ttokjaetv.github.io/Water-Calc/" target="_blank" rel="noopener">하락장 물타기 계산기</a>로, 사고팔 때 드는 비용은 <a class="txt-link" style="color:#FFB38F;" href="https://ttokjaetv.github.io/trading-fee/" target="_blank" rel="noopener">증권사 수수료 비교표</a>로 함께 확인해 보세요.</p>
+    <div class="insight-cta">
+      <div class="insight-cta-text">📊 노후 자금은 '오래 들고 있어도 구조가 무너지지 않는' 상품으로 짜는 것이 기본입니다.</div>
+      <a href="https://www.youtube.com/@ttok_jae" target="_blank" rel="noopener" class="cta-link primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        똑재TV 구독하기
+      </a>
+      <a href="https://cafe.naver.com/ttokjae" target="_blank" rel="noopener" class="cta-link secondary">
+        <span class="naver-mark">N</span>
+        평생 ETF 투자 카페 가입
+      </a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="step-label"><div class="step-line"></div><span class="step-text">계산 방법과 가정</span></div>
+    <h3 class="chart-title">이렇게 계산했습니다</h3>
+    <ul class="method-list" style="margin-top:14px;">
+      <li><b>ETF 하루 수익률 = 배율 × 지수 하루 수익률 − 연 총보수 ÷ 252.</b> 예를 들어 3배 ETF는 지수가 +2%인 날 약 +6%, −2%인 날 약 −6% 움직입니다.</li>
+      <li><b>누적은 곱하기로 쌓습니다.</b> 첫날 결과에 둘째 날 수익률이 곱해지는 식입니다. 그래서 '지수 누적 × 배율'과 '하루 × 배율을 곱해 쌓은 값'이 달라집니다.</li>
+      <li><b>단순 배율 기대치</b>는 '지수 누적 수익률 × 배율'입니다. 많은 분이 기대하기 쉬운 값이라 비교 기준으로 둡니다.</li>
+      <li><b>변동성으로 잃은 몫</b> = 총보수를 빼기 전 ETF 누적 − 단순 배율 기대치. 총보수로 빠진 몫은 따로 표시합니다.</li>
+      <li><b>근사식(쉬운 말로):</b> 장기 수익 ≈ 배율 × 지수 수익 − (배율² − 배율) ÷ 2 × 분산. 여기서 분산은 '하루 등락폭을 제곱해 기간 내내 더한 값'입니다. 배율이 커질수록 깎이는 몫은 배율보다 훨씬 빨리 커집니다(아래 표). 이 근사는 수익률을 로그로 바꿔 본 값이라 화면의 실제 계산과 조금 다를 수 있습니다.</li>
+      <li><b>ETF가 하루에 −100% 이하로 떨어지는 경우</b>(예: 3배 ETF에서 지수가 하루 −33.4% 이하)는 가치가 0이 되고 그 뒤로 회복하지 않는다고 계산합니다.</li>
+      <li><b>지수 목표가 환산</b> — 곧장: ETF = 현재가 × (1 + 배율 × 지수 변화율), −100% 아래면 0. 하루 만에 목표까지 가는 극단적 가정입니다. 오르내림: MODE 1의 'X%·Y%' 길을 그대로 써서 매일 곱해 쌓습니다.</li>
+    </ul>
+    <div class="table-wrap" style="margin-top:18px;">
+      <table class="data-table coef-table">
+        <thead><tr><th>배율</th><th>(배율² − 배율) ÷ 2</th><th>뜻</th></tr></thead>
+        <tbody>
+          <tr><td>1배</td><td>0</td><td class="c-mute" style="text-align:left;">지수와 같음 · 변동성 손실 없음</td></tr>
+          <tr><td>2배</td><td>1</td><td class="c-mute" style="text-align:left;">분산의 1배만큼 깎임</td></tr>
+          <tr><td>3배</td><td class="c-accent">3</td><td class="c-mute" style="text-align:left;">2배보다 3배 빨리 깎임</td></tr>
+          <tr><td>−1배</td><td>1</td><td class="c-mute" style="text-align:left;">인버스도 2배와 같은 속도로 깎임</td></tr>
+          <tr><td>−2배</td><td class="c-accent">3</td><td class="c-mute" style="text-align:left;">3배 레버리지와 같은 속도</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h4 class="sub-h">계산에 넣지 않은 것</h4>
+    <ul class="method-list mute">
+      <li>세금 (상품 종류·상장 국가·계좌에 따라 과세 방식이 다릅니다)</li>
+      <li>매매 수수료, 사고팔 때의 호가 차이, ETF 가격과 순자산가치의 차이(괴리율)</li>
+      <li>총보수 외 비용 — 선물 교체(롤오버)·스왑 비용, 추적오차 등 실제 운용에서 생기는 차이</li>
+      <li>환율 (해외 지수·미국 상장 ETF를 원화로 볼 때의 환율 변동)</li>
+      <li>실제 지수의 불규칙한 움직임 — 여기서는 이해를 돕기 위해 규칙적인 길을 가정했습니다</li>
+    </ul>
+  </div>
+
+  <footer>
+    ※ 본 계산기는 레버리지 ETF의 구조와 위험을 이해하기 위한 참고용 단순 계산 도구입니다. 가정한 지수 경로는 예시이며 실제 시장 움직임·상품 성과와 다를 수 있습니다.<br>
+    특정 종목·상품의 매수·매도 권유가 아니며, 투자 판단과 그 결과의 책임은 투자자 본인에게 있습니다.<br>
+    🔒 입력한 숫자는 이 브라우저 안에서만 계산되며, 서버로 보내거나 따로 저장하지 않습니다.
+  </footer>
+</div>
+
+<script>
+// ============== 표 내려받기 (CSV · 엑셀 .xlsx) — 외부 라이브러리 없이 동작 ==============
+// TJX.csv('파일이름', rows) · TJX.xlsx('파일이름', [{ name: '시트', rows, widths }])
+// rows = [[머리글...], [값...], ...]  숫자는 숫자 그대로 넣으면 엑셀에서 계산 가능한 숫자 칸이 됩니다
+const TJX = (() => {
+  const enc = new TextEncoder();
+  function csvText(rows) {
+    return '﻿' + rows.map(r => r.map(v => {
+      if (v == null) return '';
+      if (typeof v === 'number') return isFinite(v) ? String(Math.round(v * 100) / 100) : '';
+      const t = String(v);
+      return /[",\r\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+    }).join(',')).join('\r\n');
+  }
+  const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+  function zipStore(files) {   // 압축 없이 묶기 (엑셀은 이 형식도 그대로 엽니다)
+    const parts = [], central = []; let off = 0;
+    for (const f of files) {
+      const nm = enc.encode(f.name), d = enc.encode(f.text), c = crc32(d);
+      const lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
+      lh.setUint16(12, 0x21, true); lh.setUint32(14, c, true); lh.setUint32(18, d.length, true); lh.setUint32(22, d.length, true);
+      lh.setUint16(26, nm.length, true);
+      parts.push(new Uint8Array(lh.buffer), nm, d);
+      const ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true);
+      ch.setUint16(14, 0x21, true); ch.setUint32(16, c, true); ch.setUint32(20, d.length, true); ch.setUint32(24, d.length, true);
+      ch.setUint16(28, nm.length, true); ch.setUint32(42, off, true);
+      central.push(new Uint8Array(ch.buffer), nm);
+      off += 30 + nm.length + d.length;
+    }
+    const cs = central.reduce((s, a) => s + a.length, 0);
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+    end.setUint32(12, cs, true); end.setUint32(16, off, true);
+    return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  }
+  const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const colName = i => { let s = ''; i++; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
+  function sheetXml(sh) {
+    const rows = sh.rows || [];
+    const nCol = rows.reduce((m, r) => Math.max(m, r.length), 1);
+    const widths = sh.widths || [];
+    const cols = Array.from({ length: nCol }, (_, i) => `<col min="${i + 1}" max="${i + 1}" width="${widths[i] || (i === 0 ? 12 : 16)}" customWidth="1"/>`).join('');
+    const body = rows.map((r, ri) => `<row r="${ri + 1}">` + r.map((v, ci) => {
+      const ref = colName(ci) + (ri + 1);
+      if (v == null || v === '') return '';
+      if (typeof v === 'number' && isFinite(v)) {
+        const st = ri === 0 ? 2 : (Math.abs(v - Math.round(v)) < 1e-9 ? 1 : 3);
+        return `<c r="${ref}" s="${st}"><v>${Math.round(v * 10000) / 10000}</v></c>`;
+      }
+      return `<c r="${ref}" t="inlineStr"${ri === 0 ? ' s="2"' : ''}><is><t xml:space="preserve">${esc(v)}</t></is></c>`;
+    }).join('') + '</row>').join('');
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${cols}</cols><sheetData>${body}</sheetData></worksheet>`;
+  }
+  function xlsxBlob(sheets) {
+    const W = 'http://schemas.openxmlformats.org';
+    const files = [
+      { name: '[Content_Types].xml', text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="${W}/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((s, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>` },
+      { name: '_rels/.rels', text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${W}/package/2006/relationships"><Relationship Id="rId1" Type="${W}/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>` },
+      { name: 'xl/workbook.xml', text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="${W}/spreadsheetml/2006/main" xmlns:r="${W}/officeDocument/2006/relationships"><sheets>${sheets.map((s, i) => `<sheet name="${esc(String(s.name || 'Sheet' + (i + 1)).replace(/[\\\/\?\*\[\]:]/g, ' ').slice(0, 31))}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets></workbook>` },
+      { name: 'xl/_rels/workbook.xml.rels', text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${W}/package/2006/relationships">${sheets.map((s, i) => `<Relationship Id="rId${i + 1}" Type="${W}/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('')}<Relationship Id="rId${sheets.length + 1}" Type="${W}/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>` },
+      { name: 'xl/styles.xml', text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="${W}/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="맑은 고딕"/></font><font><b/><sz val="11"/><name val="맑은 고딕"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>` },
+      ...sheets.map((s, i) => ({ name: `xl/worksheets/sheet${i + 1}.xml`, text: sheetXml(s) })),
+    ];
+    return zipStore(files);
+  }
+  function save(blob, name) {
+    const a = document.createElement('a'), u = URL.createObjectURL(blob);
+    a.href = u; a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(u); a.remove(); }, 1500);
+  }
+  const stamp = () => { const d = new Date(); return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`; };
+  return {
+    csvText, xlsxBlob,
+    csv(name, rows) { save(new Blob([csvText(rows)], { type: 'text/csv;charset=utf-8' }), `${name}_${stamp()}.csv`); },
+    xlsx(name, sheets) { save(xlsxBlob(sheets), `${name}_${stamp()}.xlsx`); },
+  };
+})();
+
+// ============== 포맷 ==============
+function formatKRW(n) {
+  const neg = n < 0; n = Math.abs(n);
+  let s;
+  if (n >= 100000000) {
+    const eok = n / 100000000;
+    s = (eok >= 100 ? Math.round(eok).toLocaleString() : eok.toFixed(2)) + '억';
+  } else if (n >= 10000) s = Math.round(n / 10000).toLocaleString() + '만';
+  else s = Math.round(n).toLocaleString();
+  return (neg ? '-' : '') + s;
+}
+function formatKRWFull(n) { return Math.round(n).toLocaleString() + '원'; }
+function formatManwon(m) {
+  m = Math.round(Number(m) || 0);
+  if (m <= 0) return '0원';
+  const eok = Math.floor(m / 10000), man = m % 10000;
+  if (eok && man) return eok.toLocaleString() + '억 ' + man.toLocaleString() + '만원';
+  if (eok) return eok.toLocaleString() + '억원';
+  return man.toLocaleString() + '만원';
+}
+// 원 → "973만원", "1억 2,000만원"
+function wonText(won) {
+  if (Math.abs(won) < 10000) return Math.round(won).toLocaleString() + '원';
+  return (won < 0 ? '-' : '') + formatManwon(Math.abs(won) / 10000);
+}
+const MINUS = '−';
+// 부호 붙은 % (소수 d자리)
+function spct(v, d = 1) {
+  const r = Math.round(v * Math.pow(10, d)) / Math.pow(10, d);
+  if (r === 0) return (0).toFixed(d) + '%';
+  return (r > 0 ? '+' : MINUS) + Math.abs(r).toFixed(d) + '%';
+}
+function spp(v, d = 1) { return spct(v, d).replace('%', '%p'); }
+function numFix(v) { const r = Math.round(v * 100) / 100; return String(r); }
+function levName(L) {
+  if (L === 1) return '1배(지수)';
+  if (L === 0) return '0배';
+  if (L < 0) return '인버스 ' + (L === -1 ? MINUS + '1' : MINUS + numFix(-L)) + '배';
+  return numFix(L) + '배 레버리지';
+}
+function levShort(L) { return L < 0 ? MINUS + numFix(-L) + '배' : numFix(L) + '배'; }
+function daysText(n) {
+  if (n >= 252) { const y = n / 252; return '약 ' + (Math.abs(y - Math.round(y)) < 0.05 ? Math.round(y) : y.toFixed(1)) + '년'; }
+  if (n >= 21) return '약 ' + Math.round(n / 21) + '개월';
+  return n + '거래일';
+}
+let UNIT = 'usd';
+function priceText(p) {
+  if (!isFinite(p)) return '-';
+  if (UNIT === 'krw') return Math.round(p).toLocaleString() + '원';
+  return '$' + p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function priceShort(p) {
+  if (UNIT === 'krw') return formatKRW(p) + '원';
+  return '$' + (p >= 1000 ? Math.round(p).toLocaleString() : p.toFixed(2));
+}
+
+// ============== 상태 ==============
+let MODE = 'decay';
+let aChart = null, bChart = null;
+let lastA = null, lastB = null;
+const $ = id => document.getElementById(id);
+function num(id, d, lo, hi) {
+  const v = parseFloat($(id).value);
+  const x = isFinite(v) ? v : d;
+  return Math.max(lo, Math.min(hi, x));
+}
+
+function readA() {
+  return {
+    amt: num('amt', 0, 0, 1e7) * 10000,
+    lev: num('lev', 3, -5, 5),
+    fee: num('fee', 0, 0, 5) / 100,
+    sc: document.querySelector('input[name=sc]:checked').value,
+    a: num('alt-a', 3, 0.1, 30) / 100,
+    an: Math.round(num('alt-n', 60, 2, 2520)),
+    x: num('px', 0, -90, 500) / 100,
+    y: num('py', 1.5, 0, 15) / 100,
+    pn: Math.round(num('pn', 252, 2, 2520)),
+  };
+}
+function readB() {
+  const ci = num('ci', 20000, 0.01, 1e9), ti = num('ti', 24000, 0.01, 1e9);
+  return {
+    ci, ti, x: ti / ci - 1,
+    ep: num('ep', 100, 0.01, 1e12),
+    lev: num('lev2', 3, -5, 5),
+    fee: num('fee2', 0, 0, 5) / 100,
+    route: document.querySelector('input[name=route]:checked').value,
+    vol: num('vol', 1.5, 0, 15) / 100,
+    dn: Math.round(num('dn', 252, 2, 2520)),
+    unit: UNIT,
+  };
+}
+
+// ============== 계산 엔진 ==============
+// 매일 +a / −a 번갈아
+function altPath(a, n) { return Array.from({ length: n }, (_, i) => i % 2 === 0 ? a : -a); }
+// 기간 말 지수가 정확히 (1+X)가 되도록: 상승일 m+Y, 하락일 m−Y 를 번갈아 (첫날 상승)
+function solveDrift(X, Y, n) {
+  if (Y <= 0) return Math.pow(1 + X, 1 / n) - 1;
+  const up = Math.ceil(n / 2), dn = Math.floor(n / 2), goal = Math.log(1 + X);
+  const g = m => up * Math.log(1 + m + Y) + dn * Math.log(1 + m - Y);
+  let lo = Y - 1 + 1e-12, hi = 1;
+  while (g(hi) < goal) hi *= 2;
+  for (let k = 0; k < 200; k++) { const mid = (lo + hi) / 2; if (g(mid) < goal) lo = mid; else hi = mid; }
+  return (lo + hi) / 2;
+}
+function wavePath(X, Y, n) {
+  const m = solveDrift(X, Y, n);
+  return { m, rets: Array.from({ length: n }, (_, i) => Y <= 0 ? m : (i % 2 === 0 ? m + Y : m - Y)) };
+}
+// 지수 하루 수익률 배열 → 지수·ETF 누적
+function simulate(rets, L, fee) {
+  const f = fee / 252;
+  let idx = 1, etf = 1, etf0 = 1, dead = 0, dead0 = 0, sumSq = 0;
+  const rows = [{ day: 0, r: 0, re: 0, idx: 1, etf: 1, etf0: 1, simple: 1 }];
+  rets.forEach((r, i) => {
+    idx *= 1 + r; sumSq += r * r;
+    let re = L * r - f;
+    if (dead) re = 0;
+    else { etf *= 1 + re; if (etf <= 0) { etf = 0; dead = i + 1; } }
+    if (!dead0) { etf0 *= 1 + L * r; if (etf0 <= 0) { etf0 = 0; dead0 = i + 1; } }
+    rows.push({ day: i + 1, r, re, idx, etf, etf0, simple: Math.max(0, 1 + L * (idx - 1)) });
+  });
+  return { rows, idx, etf, etf0, sumSq, dead, simple: Math.max(0, 1 + L * (idx - 1)) };
+}
+// 근사식: ln(ETF) ≈ L·ln(지수) − (L²−L)/2 · Σr² − 총보수×일수/252
+function approxEtf(L, idx, sumSq, fee, n) {
+  if (idx <= 0) return 0;
+  return Math.exp(L * Math.log(idx) - (L * L - L) / 2 * sumSq - fee * n / 252);
+}
+function pathA(inp) {
+  if (inp.sc === 'alt') return { rets: altPath(inp.a, inp.an), n: inp.an, m: 0 };
+  const w = wavePath(inp.x, inp.y, inp.pn);
+  return { rets: w.rets, n: inp.pn, m: w.m };
+}
+function scenText(inp) {
+  return inp.sc === 'alt'
+    ? `매일 +${numFix(inp.a * 100)}% / ${MINUS}${numFix(inp.a * 100)}% 번갈아 ${inp.an}거래일${inp.an >= 21 ? '(' + daysText(inp.an) + ')' : ''}`
+    : `지수 총 ${spct(inp.x * 100, 1)} · 일 변동성 ±${numFix(inp.y * 100)}% · ${inp.pn}거래일${inp.pn >= 21 ? '(' + daysText(inp.pn) + ')' : ''}`;
+}
+
+// ============== 차트 공통 ==============
+const chartCommonOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { labels: { font: { family: 'Pretendard', size: 13, weight: 600 }, color: '#1A1A1A', usePointStyle: true, padding: 16 } },
+    tooltip: {
+      backgroundColor: '#FBF7F0', titleColor: '#1A1A1A', bodyColor: '#3A2F26', borderColor: '#D9542B', borderWidth: 1.5,
+      padding: 14, titleFont: { family: 'Pretendard', size: 14, weight: 800 }, bodyFont: { family: 'Pretendard', size: 13, weight: 600 },
+      titleSpacing: 6, bodySpacing: 8, titleMarginBottom: 10, caretSize: 8, cornerRadius: 10, usePointStyle: true, boxPadding: 6,
+    }
+  }
+};
+const endLabelPlugin = {
+  id: 'endLabel',
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    ctx.save();
+    const labels = [];
+    chart.data.datasets.forEach((ds, i) => {
+      const meta = chart.getDatasetMeta(i);
+      if (meta.hidden) return;
+      const last = ds.data.length - 1;
+      const p = meta.data[last];
+      if (!p) return;
+      labels.push({ x: p.x, y: p.y, color: ds._endLabelColor || ds.borderColor, text: ds._short || ds.label, value: ds.data[last], fmt: ds._fmt || formatKRW });
+    });
+    labels.sort((a, b) => a.y - b.y);
+    for (let i = 1; i < labels.length; i++) if (labels[i].y - labels[i - 1].y < 18) labels[i].y = labels[i - 1].y + 18;
+    const isMobile = window.innerWidth < 768;
+    labels.forEach(l => {
+      const fs = isMobile ? 10 : 11;
+      ctx.font = `700 ${fs}px Pretendard, sans-serif`;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      const text = `${l.text} ${l.fmt(l.value)}`;
+      const tw = ctx.measureText(text).width;
+      const padX = isMobile ? 6 : 8, padY = isMobile ? 3 : 4;
+      const bx = l.x + 6, bh = fs + padY * 2, by = l.y - bh / 2, bw = tw + padX * 2, r = 4;
+      ctx.fillStyle = '#FBF7F0'; ctx.strokeStyle = l.color; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') ctx.roundRect(bx, by, bw, bh, r); else ctx.rect(bx, by, bw, bh);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = l.color;
+      ctx.fillText(text, bx + padX, l.y);
+    });
+    ctx.restore();
+  }
+};
+function lineChart(canvas, labels, datasets, yFmt, tipFmt, rightPad) {
+  const isMobile = window.innerWidth < 768;
+  return new Chart(canvas, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      ...chartCommonOptions,
+      interaction: { mode: 'index', intersect: false },
+      layout: { padding: { right: isMobile ? rightPad[0] : rightPad[1], top: 10, bottom: 4, left: 4 } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: 'Pretendard', size: 11, weight: 600 }, color: '#8B8276', maxTicksLimit: isMobile ? 5 : 12, maxRotation: 0 } },
+        y: { grid: { color: '#EFE7DA' }, ticks: { font: { family: 'Pretendard', size: 11, weight: 600 }, color: '#8B8276', callback: yFmt } },
+      },
+      plugins: {
+        ...chartCommonOptions.plugins,
+        legend: { display: true, position: 'top', align: 'start', labels: { ...chartCommonOptions.plugins.legend.labels, font: { family: 'Pretendard', size: isMobile ? 11 : 13, weight: 600 }, boxWidth: 8, padding: isMobile ? 10 : 16 } },
+        datalabels: { display: false },
+        tooltip: {
+          ...chartCommonOptions.plugins.tooltip, mode: 'index', intersect: false,
+          itemSort: (a, b) => b.parsed.y - a.parsed.y,
+          callbacks: { label: c => '  ' + c.dataset.label + ': ' + tipFmt(c.parsed.y) },
+        },
+      },
+    },
+    plugins: [endLabelPlugin],
+  });
+}
+// 점이 너무 많으면 차트용으로 솎아 내기 (마지막 날은 항상 포함)
+function thinIdx(n, maxPts) {
+  const step = Math.max(1, Math.ceil((n + 1) / maxPts));
+  const out = [];
+  for (let i = 0; i <= n; i += step) out.push(i);
+  if (out[out.length - 1] !== n) out.push(n);
+  return out;
+}
+
+// ============== MODE 1 렌더 ==============
+function renderA() {
+  const inp = readA();
+  const P = pathA(inp);
+  const sim = simulate(P.rets, inp.lev, inp.fee);
+  const L = inp.lev, n = P.n;
+  const idxR = (sim.idx - 1) * 100;
+  const simpleR = (sim.simple - 1) * 100;
+  const etfR = (sim.etf - 1) * 100;
+  const etf0R = (sim.etf0 - 1) * 100;
+  const volLoss = etf0R - simpleR;        // 총보수 빼기 전 기준 변동성 몫
+  const feeLoss = etfR - etf0R;           // 총보수로 빠진 몫
+  const ln = levName(L), ls = levShort(L);
+  const amt = inp.amt;
+
+  $('a-v-label').textContent = 'MODE 1 · 변동성 손실(음의 복리)';
+  $('a-v-main').innerHTML = `지수는 <span class="hl">${spct(idxR)}</span>인데<br>${ls} ETF는 <span class="hl">${spct(etfR)}</span>입니다`;
+  let sub = `${scenText(inp)} 기준입니다. 지수에 ${ls}를 곱한 <strong>${spct(simpleR)}</strong>를 기대하기 쉽지만, `;
+  if (sim.dead) sub += `${sim.dead}일째에 하루 손실이 −100%를 넘어 <strong>ETF 가치가 0</strong>이 됩니다. 배율이 높고 하루 등락이 크면 이런 일이 생길 수 있습니다.`;
+  else if (sim.simple <= 0) sub += `이 조건은 단순 계산으로도 원금이 모두 사라지는 수준이고, 실제 ETF도 <strong>${spct(etfR)}</strong>로 거의 전액을 잃습니다.`;
+  else if (Math.abs(L - 1) < 1e-9 || L === 0) sub += `배율이 ${ls}이면 변동성 손실은 없고 총보수만 빠집니다.`;
+  else if (volLoss < -0.05) sub += `매일 ${ls}씩 움직인 결과가 곱해지며 쌓이는 동안 <strong>${spp(volLoss)}</strong>가 변동성에 깎였습니다${inp.fee > 0 ? `(총보수 ${spp(feeLoss, 2)} 별도)` : ''}.`;
+  else if (volLoss > 0.05) sub += `이 길에서는 오히려 <strong>${spp(volLoss)}</strong> 더 벌었습니다. 한 방향으로 꾸준히 움직이면 복리가 유리하게 작용하기도 합니다.`;
+  else sub += `이 조건에서는 차이가 거의 없습니다.`;
+  if (amt > 0) sub += ` 투자금 ${wonText(amt)}은 <strong>${wonText(amt * sim.etf)}</strong>이 됩니다.`;
+  $('a-v-sub').innerHTML = sub;
+
+  $('a1-value').textContent = spct(idxR);
+  $('a1-sub').innerHTML = amt > 0 ? `지수를 그대로 따라가면 ${wonText(amt * sim.idx)}` : '기초지수 누적';
+  $('a2-label').textContent = `단순 ${ls} 기대치`;
+  $('a2-value').textContent = spct(simpleR);
+  $('a2-sub').innerHTML = `지수 ${spct(idxR)} × ${ls} (기대하기 쉬운 값)`;
+  $('a3-label').textContent = `실제 ${ls} ETF 수익률`;
+  $('a3-value').textContent = spct(etfR);
+  $('a3-sub').innerHTML = sim.dead ? `${sim.dead}일째 가치 0` : (amt > 0 ? `평가액 ${wonText(amt * sim.etf)}` : '매일 배율 적용 후 곱해 쌓은 값');
+  $('a4-value').textContent = sim.dead ? '전액' : spp(volLoss);
+  $('a4-sub').innerHTML = sim.dead ? '하루 −100% 초과로 가치 0'
+    : `단순 기대 대비${amt > 0 ? ` 약 ${wonText(Math.abs(amt * volLoss / 100))}` : ''} · 총보수로 ${spp(feeLoss, 2)} 별도`;
+
+  // 근사식
+  const ap = approxEtf(L, sim.idx, sim.sumSq, inp.fee, n);
+  const coef = (L * L - L) / 2;
+  const dailyVar = sim.sumSq / n;
+  $('a-approx').innerHTML = `<b>근사식으로 확인하면</b> — 하루 등락폭을 제곱해 ${n}일 동안 더한 값(분산 합계)은 <b>${sim.sumSq.toFixed(4)}</b>(하루 평균 ±${(Math.sqrt(dailyVar) * 100).toFixed(2)}% 수준의 등락)이고, ${ls}의 계수 (배율² − 배율) ÷ 2 = <b>${numFix(coef)}</b>입니다. 둘을 곱하면 ` +
+    `로그 기준 약 <b>${(coef * sim.sumSq * 100).toFixed(1)}%p</b>가 변동성 비용으로 빠진다는 뜻이고, 근사식으로 추정한 ETF 수익률은 <b>${spct((ap - 1) * 100)}</b>(실제 계산 ${spct(etfR)})입니다.` +
+    (sim.dead ? ' 단, ETF 가치가 0이 된 경우에는 근사식이 맞지 않습니다.' : '');
+
+  // 차트
+  const idxs = thinIdx(n, 400);
+  const labels = idxs.map(i => i === 0 ? '시작' : i + '일');
+  const base = amt > 0 ? amt : 100;
+  const fmtA = amt > 0 ? (v => formatKRW(v)) : (v => (Math.round(v * 10) / 10).toString());
+  const isMobile = window.innerWidth < 768;
+  const ds = [
+    { label: `${ls} ETF`, _short: isMobile ? 'ETF' : `${ls} ETF`, _fmt: fmtA, data: idxs.map(i => base * sim.rows[i].etf), borderColor: '#D9542B', backgroundColor: 'rgba(217,84,43,0.08)', borderWidth: 3, fill: false, tension: 0, pointRadius: 0, pointHoverRadius: 5 },
+    { label: '기초지수', _short: '지수', _fmt: fmtA, data: idxs.map(i => base * sim.rows[i].idx), borderColor: '#8B6F47', borderWidth: 2, fill: false, tension: 0, pointRadius: 0, pointHoverRadius: 4 },
+    { label: `단순 ${ls} 기대`, _short: '기대', _fmt: fmtA, data: idxs.map(i => base * sim.rows[i].simple), borderColor: '#3A2F26', borderWidth: 2, borderDash: [6, 4], fill: false, tension: 0, pointRadius: 0, pointHoverRadius: 4 },
+  ];
+  $('a-chart-sub').textContent = (amt > 0 ? `투자금 ${wonText(amt)}이 매일 어떻게 변하는지 보여 줍니다. ` : '시작을 100으로 놓고 그렸습니다. ') +
+    `점선은 '그날까지 지수 누적 × ${ls}'로, 기대하기 쉬운 값입니다. 주황 선이 점선 아래로 벌어지는 만큼이 변동성으로 잃은 몫입니다.` + (idxs.length < n + 1 ? ' (기간이 길어 차트는 일부 날짜만 표시)' : '');
+  if (aChart) aChart.destroy();
+  aChart = lineChart($('a-chart'), labels, ds, fmtA, amt > 0 ? formatKRWFull : (v => v.toFixed(2)), [92, 150]);
+
+  // 배율 비교
+  const levs = [-2, -1, 1, 2, 3];
+  if (!levs.some(v => Math.abs(v - L) < 1e-9)) levs.push(L);
+  levs.sort((a, b) => a - b);
+  const cmp = levs.map(l => { const s = simulate(P.rets, l, inp.fee); return { l, s, mine: Math.abs(l - L) < 1e-9 }; });
+  $('a-cmp-sub').textContent = `${scenText(inp)} · 총보수 연 ${(inp.fee * 100).toFixed(2)}% 동일. 인버스(−)는 지수가 내릴 때 버는 상품이지만, 오르내림이 반복되면 똑같이 깎입니다.`;
+  $('a-cmp-body').innerHTML = cmp.map(c => {
+    const sr = (c.s.simple - 1) * 100, er = (c.s.etf - 1) * 100;
+    return `<tr${c.mine ? ' class="highlight-row"' : ''}>
+      <td>${levShort(c.l)}${c.mine ? '<span class="tag-mini">입력값</span>' : ''}${c.l === 1 && !c.mine ? '<span class="tag-mini base">지수</span>' : ''}</td>
+      <td class="c-brown">${spct(sr, 2)}</td>
+      <td class="c-accent">${c.s.dead ? `${MINUS}100% (${c.s.dead}일째)` : spct(er, 2)}</td>
+      <td>${spp(er - sr, 2)}</td>
+      <td>${amt > 0 ? wonText(amt * c.s.etf) : '-'}</td></tr>`;
+  }).join('');
+
+  // 일별 표
+  $('a-table-sub').textContent = `${scenText(inp)} · ${ln} · 총보수 연 ${(inp.fee * 100).toFixed(2)}%(하루 ${(inp.fee / 252 * 100).toFixed(4)}%씩 차감)` + (amt > 0 ? '' : ' · 투자금 0이라 평가액은 비워 둡니다');
+  $('a-day-body').innerHTML = sim.rows.slice(1).map(r => `<tr>
+      <td>${r.day}</td>
+      <td class="${r.r < 0 ? 'c-brown' : ''}">${spct(r.r * 100, 2)}</td>
+      <td>${spct((r.idx - 1) * 100, 2)}</td>
+      <td class="${r.re < 0 ? 'c-brown' : ''}">${spct(r.re * 100, 2)}</td>
+      <td class="c-accent">${spct((r.etf - 1) * 100, 2)}</td>
+      <td>${amt > 0 ? formatKRWFull(amt * r.etf) : '-'}</td>
+      <td class="c-mute">${amt > 0 ? formatKRWFull(amt * r.simple) : '-'}</td></tr>`).join('');
+
+  lastA = { inp, sim, cmp, n, idxR, simpleR, etfR, volLoss, feeLoss };
+  renderInsightA();
+}
+
+function renderInsightA() {
+  const x = lastA; if (!x) return;
+  const L = x.inp.lev, ls = levShort(L);
+  const t = $('insight-title'), d = $('insight-desc');
+  if (x.sim.dead) {
+    t.textContent = `${ls} ETF는 하루 큰 하락 한 번으로 회복할 수 없는 손실이 날 수 있습니다`;
+    d.innerHTML = `이 조건에서는 하루 손실이 −100%를 넘어 가치가 0이 됐습니다. 실제 상품은 이런 상황을 막기 위한 장치를 두기도 하지만, <strong>배율 × 하루 하락폭</strong>이 그대로 손실로 이어진다는 구조는 같습니다.`;
+  } else if (Math.abs(L - 1) < 1e-9 || L === 0) {
+    t.textContent = '1배에서는 변동성 손실이 생기지 않습니다';
+    d.innerHTML = `배율이 1이면 ETF는 지수를 그대로 따라가고 총보수만 빠집니다. 배율을 2·3배나 인버스로 바꿔 보면 같은 길에서 결과가 얼마나 달라지는지 바로 보입니다.`;
+  } else if (x.volLoss < -0.05) {
+    const two = x.cmp.find(c => c.l === 2), three = x.cmp.find(c => c.l === 3);
+    t.textContent = `지수 ${spct(x.idxR)}, 단순 기대 ${spct(x.simpleR)}, 실제 ${ls} ETF ${spct(x.etfR)}`;
+    d.innerHTML = `같은 길을 걸어도 ${ls} ETF는 <strong>${spp(x.volLoss)}</strong>를 변동성에 내줬습니다. ` +
+      (two && three && !two.s.dead && !three.s.dead ? `같은 조건에서 2배는 ${spct((two.s.etf - 1) * 100)}, 3배는 ${spct((three.s.etf - 1) * 100)}입니다. ` : '') +
+      `오르내림이 클수록, 기간이 길수록, 배율이 높을수록 이 차이는 빠르게 커집니다. "지수가 결국 제자리로 돌아오면 본전"이라는 생각이 레버리지 ETF에서는 맞지 않는 이유입니다.`;
+  } else {
+    t.textContent = `이 길에서는 ${ls} ETF가 단순 기대보다 ${spp(x.volLoss)} 앞섰습니다`;
+    d.innerHTML = `출렁임이 작고 한 방향으로 꾸준히 움직이면 매일 곱해 쌓는 효과가 유리하게 작용합니다. 다만 실제 시장은 이렇게 고르게 움직이지 않습니다. 일 변동성을 1.5~2%로 올려 보거나 기간을 늘려 보면 결과가 어떻게 뒤집히는지 확인해 보세요.`;
+  }
+}
+
+// ============== MODE 2 렌더 ==============
+function routeCalc(inp, vol) {
+  const w = wavePath(inp.x, vol, inp.dn);
+  const s = simulate(w.rets, inp.lev, inp.fee);
+  return { s, price: inp.ep * s.etf, ret: (s.etf - 1) * 100 };
+}
+function renderB() {
+  const inp = readB();
+  const L = inp.lev, ls = levShort(L);
+  const X = inp.x * 100;
+  const jumpF = Math.max(0, 1 + L * inp.x);
+  const jumpP = inp.ep * jumpF, jumpR = (jumpF - 1) * 100;
+  const wave = routeCalc(inp, inp.vol);
+  const diffP = wave.price - jumpP, diffR = wave.ret - jumpR;
+  const primaryWave = inp.route === 'wave';
+
+  $('b-v-label').textContent = 'MODE 2 · 지수 목표가 → ETF 가격';
+  const target = `지수 ${inp.ti.toLocaleString(undefined, { maximumFractionDigits: 2 })}(${spct(X)})`;
+  if (primaryWave) {
+    $('b-v-main').innerHTML = `${target}까지 오르내리며 가면<br>${ls} ETF는 약 <span class="hl">${priceText(wave.price)}</span>(${spct(wave.ret)})`;
+    $('b-v-sub').innerHTML = `${inp.dn}거래일(${daysText(inp.dn)}) 동안 매일 ±${numFix(inp.vol * 100)}%씩 출렁이며 간다고 본 값입니다. 하루 만에 곧장 간다면 <strong>${priceText(jumpP)}</strong>(${spct(jumpR)})이라, 가는 길 때문에 <strong>${diffP >= 0 ? '+' : MINUS}${priceText(Math.abs(diffP))}</strong>(${spp(diffR)}) 차이가 납니다.` +
+      (wave.s.dead ? ` 이 경로에서는 ${wave.s.dead}일째 ETF 가치가 0이 됩니다.` : '');
+  } else {
+    $('b-v-main').innerHTML = `${target}까지 한 번에 곧장 가면<br>${ls} ETF는 <span class="hl">${priceText(jumpP)}</span>(${spct(jumpR)})`;
+    $('b-v-sub').innerHTML = `하루 만에 목표까지 가는 극단적 가정입니다${jumpF === 0 ? '(−100% 아래라 0으로 계산)' : ''}. 현실처럼 ${daysText(inp.dn)} 동안 매일 ±${numFix(inp.vol * 100)}%씩 출렁이며 간다면 <strong>${priceText(wave.price)}</strong>(${spct(wave.ret)})으로, <strong>${diffP >= 0 ? '+' : MINUS}${priceText(Math.abs(diffP))}</strong>(${spp(diffR)}) 차이가 납니다.`;
+  }
+  $('b2-card').className = 'stat-card' + (primaryWave ? '' : ' accent');
+  $('b3-card').className = 'stat-card' + (primaryWave ? ' accent' : '');
+  $('b1-value').textContent = spct(X);
+  $('b1-sub').innerHTML = `${inp.ci.toLocaleString(undefined, { maximumFractionDigits: 2 })} → ${inp.ti.toLocaleString(undefined, { maximumFractionDigits: 2 })} · 단순 ${ls}면 ${spct(L * X)}`;
+  $('b2-value').textContent = priceShort(jumpP);
+  $('b2-sub').innerHTML = `${spct(jumpR)} · 현재가 × (1 + ${ls} × ${spct(X)})`;
+  $('b3-value').textContent = wave.s.dead ? '0' : priceShort(wave.price);
+  $('b3-sub').innerHTML = `${spct(wave.ret)} · 일 ±${numFix(inp.vol * 100)}%, ${inp.dn}거래일`;
+  $('b4-value').textContent = spp(diffR);
+  $('b4-sub').innerHTML = `가격으로 ${diffP >= 0 ? '+' : MINUS}${priceText(Math.abs(diffP))} · 오르내림 − 곧장`;
+
+  // 차트: 오르내림 경로의 ETF 가격 vs 그날 지수 기준 단순 환산
+  const n = inp.dn, idxs = thinIdx(n, 400);
+  const fmtP = v => priceShort(v);
+  const isMobile = window.innerWidth < 768;
+  const ds = [
+    { label: `${ls} ETF (오르내림)`, _short: isMobile ? 'ETF' : `${ls} ETF`, _fmt: fmtP, data: idxs.map(i => inp.ep * wave.s.rows[i].etf), borderColor: '#D9542B', borderWidth: 3, fill: false, tension: 0, pointRadius: 0, pointHoverRadius: 5 },
+    { label: '그날 지수로 곧장 환산', _short: '곧장 환산', _fmt: fmtP, data: idxs.map(i => inp.ep * wave.s.rows[i].simple), borderColor: '#3A2F26', borderWidth: 2, borderDash: [6, 4], fill: false, tension: 0, pointRadius: 0, pointHoverRadius: 4 },
+  ];
+  $('b-chart-sub').textContent = `점선은 '그날의 지수를 곧장 공식으로 환산한 가격'입니다. 마지막 날 지수는 목표(${spct(X)})에 정확히 닿지만, 주황 선(실제처럼 매일 곱해 쌓은 가격)은 점선과 다른 곳에 도착합니다.` + (idxs.length < n + 1 ? ' (기간이 길어 차트는 일부 날짜만 표시)' : '');
+  if (bChart) bChart.destroy();
+  bChart = lineChart($('b-chart'), idxs.map(i => i === 0 ? '시작' : i + '일'), ds, fmtP, v => priceText(v), [100, 170]);
+
+  // 변동성별 표
+  const vols = [0, 0.005, 0.01, 0.015, 0.02, 0.03];
+  if (!vols.some(v => Math.abs(v - inp.vol) < 1e-9)) vols.push(inp.vol);
+  vols.sort((a, b) => a - b);
+  const rows = [{ label: '한 번에 곧장', price: jumpP, ret: jumpR, base: true, mine: !primaryWave }]
+    .concat(vols.map(v => { const c = routeCalc(inp, v); return { label: v === 0 ? '매일 같은 비율로 꾸준히' : `일 ±${numFix(v * 100)}% 출렁이며`, price: c.price, ret: c.ret, dead: c.s.dead, vol: v, mine: primaryWave && Math.abs(v - inp.vol) < 1e-9 }; }));
+  $('b-tbl-sub').textContent = `${target}, ${inp.dn}거래일(${daysText(inp.dn)}) 동안 가는 경우입니다. 총보수 연 ${(inp.fee * 100).toFixed(2)}%는 '곧장'을 뺀 나머지에 반영했습니다.`;
+  $('b-tbl-body').innerHTML = rows.map(r => `<tr${r.mine ? ' class="highlight-row"' : ''}>
+      <td style="text-align:left;">${r.label}${r.mine ? '<span class="tag-mini">입력값</span>' : ''}</td>
+      <td class="c-accent">${r.dead ? '0 (가치 소멸)' : priceText(r.price)}</td>
+      <td>${spct(r.ret, 2)}</td>
+      <td class="c-brown">${r.base ? '기준' : spp(r.ret - jumpR, 2)}</td></tr>`).join('');
+
+  lastB = { inp, jumpP, jumpR, wave, diffP, diffR, rows, X };
+  renderInsightB();
+}
+function renderInsightB() {
+  const x = lastB; if (!x) return;
+  const ls = levShort(x.inp.lev);
+  const t = $('insight-title'), d = $('insight-desc');
+  if (Math.abs(x.inp.lev - 1) < 1e-9) {
+    t.textContent = '1배라면 가는 길과 상관없이 거의 같은 곳에 도착합니다';
+    d.innerHTML = '배율이 1이면 지수와 같이 움직이므로 길에 따른 차이는 총보수 정도입니다. 배율을 2·3배로 바꿔 보세요.';
+  } else if (x.diffR < 0) {
+    t.textContent = `목표 지수는 같아도, 출렁이며 가면 ${ls} ETF는 ${spp(x.diffR)} 덜 갑니다`;
+    d.innerHTML = `"나스닥이 ○○까지 가면 3배 ETF는 3배 오르겠지" 하는 계산은 <strong>하루 만에 곧장 갈 때</strong>만 맞습니다. 실제로는 그 사이 오르내림이 매일 곱해지며 쌓이기 때문에, 같은 목표 지수에 닿아도 ETF 가격은 ${priceText(x.wave.price)} 언저리일 수 있습니다. 목표 지수만 보고 레버리지 ETF의 목표가를 정하면 기대와 결과가 크게 어긋날 수 있습니다.`;
+  } else {
+    t.textContent = `이 조건에서는 오르내림 경로가 곧장보다 ${spp(x.diffR)} 앞섭니다`;
+    d.innerHTML = `출렁임이 작고 기간이 짧으면 매일 곱해 쌓는 효과가 유리하게 작용하기도 합니다. 그러나 변동성을 1.5~3%로 올리거나 기간을 늘리면 금방 뒤집힙니다. 아래 표에서 변동성별로 확인해 보세요.`;
+  }
+}
+
+// ============== 공통 렌더 ==============
+function render() {
+  if (MODE === 'decay') renderA(); else renderB();
+  syncUrl();
+}
+
+// ============== 표 내려받기 ==============
+function exportADay() {
+  const x = lastA, amt = x.inp.amt;
+  const head = ['일차', '지수 하루 수익률(%)', '지수 누적(%)', 'ETF 하루 수익률(%)', 'ETF 누적(%)', '단순 배율 기대(%)'];
+  if (amt > 0) head.push('ETF 평가액(원)', '단순 배율 기대 평가액(원)', '지수 그대로 평가액(원)');
+  const r4 = v => Math.round(v * 10000) / 10000;
+  const rows = [head];
+  x.sim.rows.forEach(r => {
+    const row = [r.day, r4(r.r * 100), r4((r.idx - 1) * 100), r4(r.re * 100), r4((r.etf - 1) * 100), r4((r.simple - 1) * 100)];
+    if (amt > 0) row.push(Math.round(amt * r.etf), Math.round(amt * r.simple), Math.round(amt * r.idx));
+    rows.push(row);
+  });
+  return rows;
+}
+function exportACmp() {
+  const x = lastA, amt = x.inp.amt;
+  const rows = [['배율', '단순 배율 기대(%)', '실제 ETF(%)', '차이(%p)', '평가액(원)']];
+  const r2 = v => Math.round(v * 100) / 100;
+  x.cmp.forEach(c => { const sr = (c.s.simple - 1) * 100, er = (c.s.etf - 1) * 100; rows.push([c.l, r2(sr), r2(er), r2(er - sr), amt > 0 ? Math.round(amt * c.s.etf) : '']); });
+  rows.push([]);
+  rows.push(['조건', scenText(x.inp) + ` · 총보수 연 ${(x.inp.fee * 100).toFixed(2)}%`]);
+  return rows;
+}
+function exportBTbl() {
+  const x = lastB, u = x.inp.unit === 'krw' ? '원' : '달러';
+  const r2 = v => Math.round(v * 100) / 100;
+  const rows = [['지수가 가는 길', `예상 ETF 가격(${u})`, 'ETF 수익률(%)', '곧장 대비(%p)']];
+  x.rows.forEach(r => rows.push([r.label, r2(r.price), r2(r.ret), r.base ? 0 : r2(r.ret - x.jumpR)]));
+  rows.push([]);
+  rows.push(['조건', `현재 지수 ${x.inp.ci} → 목표 ${x.inp.ti} (${spct(x.X, 2)}) · ${levShort(x.inp.lev)} · 현재가 ${x.inp.ep}${u} · ${x.inp.dn}거래일 · 총보수 연 ${(x.inp.fee * 100).toFixed(2)}%`]);
+  return rows;
+}
+function exportBPath() {
+  const x = lastB, u = x.inp.unit === 'krw' ? '원' : '달러';
+  const r4 = v => Math.round(v * 10000) / 10000;
+  const rows = [['일차', '지수 하루 수익률(%)', '지수', 'ETF 하루 수익률(%)', `ETF 가격(${u})`, `그날 지수로 곧장 환산(${u})`]];
+  x.wave.s.rows.forEach(r => rows.push([r.day, r4(r.r * 100), r4(x.inp.ci * r.idx), r4(r.re * 100), r4(x.inp.ep * r.etf), r4(x.inp.ep * r.simple)]));
+  return rows;
+}
+document.addEventListener('click', e => {
+  const id = e.target && e.target.id;
+  if (id === 'a-dl-csv' && lastA) TJX.csv('레버리지ETF_변동성손실_일별', exportADay());
+  else if (id === 'a-dl-xlsx' && lastA) TJX.xlsx('레버리지ETF_변동성손실', [
+    { name: '일별', rows: exportADay(), widths: [7, 17, 14, 17, 14, 16, 16, 20, 18] },
+    { name: '배율 비교', rows: exportACmp(), widths: [10, 18, 14, 12, 16] },
+  ]);
+  else if (id === 'b-dl-csv' && lastB) TJX.csv('레버리지ETF_목표가환산_변동성별', exportBTbl());
+  else if (id === 'b-dl-xlsx' && lastB) TJX.xlsx('레버리지ETF_목표가환산', [
+    { name: '변동성별', rows: exportBTbl(), widths: [24, 18, 14, 14] },
+    { name: '일별 경로', rows: exportBPath(), widths: [7, 17, 14, 17, 16, 22] },
+  ]);
+});
+
+// ============== 결과 복사 ==============
+function resultText() {
+  const lines = [];
+  if (MODE === 'decay' && lastA) {
+    const x = lastA, ls = levShort(x.inp.lev), amt = x.inp.amt;
+    lines.push('[레버리지 ETF 변동성 손실 계산]');
+    lines.push(`조건: ${amt > 0 ? '투자금 ' + wonText(amt) + ' · ' : ''}${levName(x.inp.lev)} · 총보수 연 ${(x.inp.fee * 100).toFixed(2)}% · ${scenText(x.inp)}`);
+    lines.push(`기초지수: ${spct(x.idxR, 2)}${amt > 0 ? ' (' + wonText(amt * x.sim.idx) + ')' : ''}`);
+    lines.push(`단순 ${ls} 기대: ${spct(x.simpleR, 2)}`);
+    lines.push(`실제 ${ls} ETF: ${x.sim.dead ? '가치 0 (' + x.sim.dead + '일째)' : spct(x.etfR, 2)}${amt > 0 && !x.sim.dead ? ' (' + wonText(amt * x.sim.etf) + ')' : ''}`);
+    if (!x.sim.dead) lines.push(`변동성으로 잃은 몫: ${spp(x.volLoss, 2)} · 총보수 ${spp(x.feeLoss, 2)}`);
+  } else if (lastB) {
+    const x = lastB, ls = levShort(x.inp.lev);
+    lines.push('[지수 목표가 → 레버리지 ETF 가격 환산]');
+    lines.push(`조건: 지수 ${x.inp.ci.toLocaleString()} → ${x.inp.ti.toLocaleString()} (${spct(x.X, 2)}) · ${levName(x.inp.lev)} · 현재가 ${priceText(x.inp.ep)}`);
+    lines.push(`한 번에 곧장: ${priceText(x.jumpP)} (${spct(x.jumpR, 2)})`);
+    lines.push(`오르내리며(일 ±${numFix(x.inp.vol * 100)}%, ${x.inp.dn}거래일, 총보수 연 ${(x.inp.fee * 100).toFixed(2)}%): ${priceText(x.wave.price)} (${spct(x.wave.ret, 2)})`);
+    lines.push(`차이: ${spp(x.diffR, 2)}`);
+  }
+  lines.push('※ 참고용 단순 계산이며 특정 상품의 매수·매도 권유가 아닙니다.');
+  lines.push(buildUrl());
+  return lines.join('\n');
+}
+function copyText(text, btn, label) {
+  const done = ok => { btn.textContent = ok ? '복사했습니다' : '복사 실패 — 직접 복사해 주세요'; setTimeout(() => btn.textContent = label, 1800); };
+  const fallback = () => {
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+    ta.remove(); done(ok);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => done(true), fallback);
+  else fallback();
+}
+
+// ============== 주소로 값 주고받기 ==============
+const URL_FIELDS = { amt: 'amt', lev: 'lev', fee: 'fee', a: 'alt-a', an: 'alt-n', px: 'px', py: 'py', pn: 'pn', ci: 'ci', ti: 'ti', ep: 'ep', lev2: 'lev2', fee2: 'fee2', vol: 'vol', dn: 'dn' };
+function buildUrl() {
+  const p = new URLSearchParams();
+  p.set('mode', MODE);
+  const keys = MODE === 'decay' ? ['amt', 'lev', 'fee', 'a', 'an', 'px', 'py', 'pn'] : ['ci', 'ti', 'ep', 'lev2', 'fee2', 'vol', 'dn'];
+  keys.forEach(k => { const v = parseFloat($(URL_FIELDS[k]).value); if (isFinite(v)) p.set(k, String(Math.round(v * 10000) / 10000)); });
+  if (MODE === 'decay') p.set('sc', document.querySelector('input[name=sc]:checked').value);
+  else { p.set('route', document.querySelector('input[name=route]:checked').value); p.set('unit', UNIT); }
+  return location.href.split('?')[0].split('#')[0] + '?' + p.toString();
+}
+function syncUrl() { try { history.replaceState(null, '', buildUrl()); } catch (e) {} }
+function readUrl() {
+  let q; try { q = new URLSearchParams(location.search); } catch (e) { return; }
+  if (!q.toString()) return;
+  Object.entries(URL_FIELDS).forEach(([k, id]) => {
+    if (!q.has(k)) return;
+    const v = parseFloat(q.get(k));
+    if (!isFinite(v) || Math.abs(v) > 1e12) return;
+    $(id).value = String(v);
+  });
+  const sc = q.get('sc'); if (sc === 'alt' || sc === 'path') document.querySelector(`input[name=sc][value=${sc}]`).checked = true;
+  const route = q.get('route'); if (route === 'wave' || route === 'jump') document.querySelector(`input[name=route][value=${route}]`).checked = true;
+  const unit = q.get('unit'); if (unit === 'usd' || unit === 'krw') { UNIT = unit; $('unit').value = unit; }
+  const mode = q.get('mode'); if (mode === 'decay' || mode === 'target') MODE = mode;
+}
+
+// ============== 입력칸 숫자 뒤 단위 ==============
+const unitCanvas = document.createElement('canvas').getContext('2d');
+function placeUnits() {
+  document.querySelectorAll('.input-wrap input[data-unit]').forEach(inp => {
+    let tag = inp.parentNode.querySelector('.input-unit');
+    if (!tag) { tag = document.createElement('span'); tag.className = 'input-unit'; inp.after(tag); }
+    tag.textContent = inp.dataset.unit;
+    const cs = getComputedStyle(inp);
+    if (inp.value === '' || !inp.offsetWidth) { tag.style.visibility = 'hidden'; return; }
+    unitCanvas.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    const w = unitCanvas.measureText(inp.value).width;
+    const left = parseFloat(cs.paddingLeft) + parseFloat(cs.borderLeftWidth) + w + 4 - inp.scrollLeft;
+    tag.style.left = Math.round(left) + 'px';
+    tag.style.fontSize = cs.fontSize;
+    tag.style.visibility = left + tag.offsetWidth < inp.clientWidth - parseFloat(cs.paddingRight) + 8 ? 'visible' : 'hidden';
+  });
+}
+
+// ============== 입력 UI ==============
+function updateDisplays() {
+  const v = id => parseFloat($(id).value);
+  const set = (id, text, empty) => { const el = $(id); el.textContent = text; el.classList.toggle('empty', !!empty); };
+  const amt = v('amt');
+  set('amt-display', isFinite(amt) && amt > 0 ? formatManwon(amt) : '0원', !(amt > 0));
+  ['lev', 'lev2'].forEach(id => { const L = v(id); set(id + '-display', isFinite(L) ? levName(Math.max(-5, Math.min(5, L))) : '-', !isFinite(L)); });
+  ['fee', 'fee2'].forEach(id => { const f = v(id); set(id + '-display', isFinite(f) ? '연 ' + f.toFixed(2) + '%' : '-', !isFinite(f)); });
+  const a = v('alt-a'); set('alt-a-display', isFinite(a) ? '±' + numFix(a) + '%' : '-', !isFinite(a));
+  ['alt-n', 'pn', 'dn'].forEach(id => { const n = v(id); set(id + '-display', isFinite(n) && n >= 2 ? daysText(Math.round(Math.min(2520, n))) : '-', !(n >= 2)); });
+  const px = v('px'); set('px-display', isFinite(px) ? spct(px, Math.abs(px - Math.round(px)) > 1e-9 ? 1 : 0) : '-', !isFinite(px));
+  ['py', 'vol'].forEach(id => { const y = v(id); set(id + '-display', isFinite(y) ? '일 ±' + numFix(y) + '%' : '-', !isFinite(y)); });
+  const ci = v('ci'), ti = v('ti'), ep = v('ep');
+  set('ci-display', isFinite(ci) && ci > 0 ? ci.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '입력', !(ci > 0));
+  set('ti-display', ci > 0 && ti > 0 ? spct((ti / ci - 1) * 100) : '입력', !(ci > 0 && ti > 0));
+  set('ep-display', isFinite(ep) && ep > 0 ? priceText(ep) : '입력', !(ep > 0));
+  $('ep').dataset.unit = UNIT === 'krw' ? '원' : '달러';
+  document.querySelectorAll('.chips[data-target]').forEach(box => {
+    const cur = parseFloat($(box.dataset.target).value);
+    box.querySelectorAll('.chip').forEach(ch => ch.classList.toggle('on', parseFloat(ch.dataset.v) === cur));
+  });
+  document.querySelectorAll('#ti-chips .chip').forEach(ch => {
+    ch.classList.toggle('on', ci > 0 && Math.abs((ti / ci - 1) * 100 - parseFloat(ch.dataset.p)) < 1e-6);
+  });
+  const sc = document.querySelector('input[name=sc]:checked').value;
+  $('sc-alt-body').classList.toggle('is-hidden', sc !== 'alt');
+  $('sc-path-body').classList.toggle('is-hidden', sc !== 'path');
+  document.querySelectorAll('.radio-opt').forEach(o => o.classList.toggle('on', o.querySelector('input').checked));
+}
+function applyMode() {
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === MODE));
+  $('pane-decay').classList.toggle('is-hidden', MODE !== 'decay');
+  $('pane-target').classList.toggle('is-hidden', MODE !== 'target');
+}
+function rerender() { updateDisplays(); placeUnits(); render(); }
+
+function bindEvents() {
+  ['amt', 'lev', 'fee', 'alt-a', 'alt-n', 'px', 'py', 'pn', 'ci', 'ti', 'ep', 'lev2', 'fee2', 'vol', 'dn'].forEach(id =>
+    $(id).addEventListener('input', rerender));
+  document.querySelectorAll('input[name=sc], input[name=route]').forEach(r => r.addEventListener('change', rerender));
+  $('unit').addEventListener('change', () => { UNIT = $('unit').value; rerender(); });
+  document.querySelectorAll('.chips[data-target]').forEach(box => box.addEventListener('click', e => {
+    const ch = e.target.closest('.chip'); if (!ch) return;
+    $(box.dataset.target).value = ch.dataset.v;
+    rerender();
+  }));
+  $('ti-chips').addEventListener('click', e => {
+    const ch = e.target.closest('.chip'); if (!ch) return;
+    const ci = parseFloat($('ci').value); if (!(ci > 0)) return;
+    $('ti').value = String(Math.round(ci * (1 + parseFloat(ch.dataset.p) / 100) * 100) / 100);
+    rerender();
+  });
+  document.querySelectorAll('.mode-tab').forEach(t => t.addEventListener('click', () => {
+    MODE = t.dataset.mode; applyMode(); rerender();
+  }));
+  $('copy-link').addEventListener('click', () => copyText(buildUrl(), $('copy-link'), '링크 복사'));
+  $('copy-result').addEventListener('click', () => copyText(resultText(), $('copy-result'), '결과 복사'));
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { placeUnits(); render(); }, 200); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(placeUnits);
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  readUrl();
+  applyMode();
+  bindEvents();
+  rerender();
+});
+</script>
+</body>
+</html>
