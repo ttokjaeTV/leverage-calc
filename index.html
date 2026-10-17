@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<script src="https://ttokjaetv.github.io/member-lock.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>레버리지 ETF 계산기 · 똑재TV</title>
 <meta name="description" content="지수가 오르내리다 제자리로 와도 레버리지·인버스 ETF는 왜 손해일까? 변동성 손실(음의 복리)을 일별로 계산하고, 지수 목표가를 레버리지 ETF 가격으로 환산해 봅니다.">
@@ -552,12 +553,12 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" data-member="일별 상세 표">
       <h3 class="chart-title">일별 상세 데이터</h3>
       <p class="chart-subtitle" id="a-table-sub">-</p>
       <div class="dl-bar">
-        <button type="button" class="dl-btn" id="a-dl-csv">CSV 내려받기</button>
-        <button type="button" class="dl-btn" id="a-dl-xlsx">엑셀(.xlsx) 내려받기</button>
+        <button type="button" class="dl-btn" id="a-dl-csv" data-member-click="엑셀 내려받기">CSV 내려받기</button>
+        <button type="button" class="dl-btn" id="a-dl-xlsx" data-member-click="엑셀 내려받기">엑셀(.xlsx) 내려받기</button>
         <span class="dl-note">엑셀에는 일별 표와 배율 비교 표가 함께 들어갑니다 (수익률은 %, 금액은 원 단위 숫자)</span>
       </div>
       <div class="table-wrap tall">
@@ -707,13 +708,13 @@
       <div class="chart-container"><canvas id="b-chart"></canvas></div>
     </div>
 
-    <div class="card">
+    <div class="card" data-member="변동성별 비교 표">
       <div class="step-label"><div class="step-line"></div><span class="step-text">변동성별 비교</span></div>
       <h3 class="chart-title">같은 목표 지수, 출렁임만 다르면?</h3>
       <p class="chart-subtitle" id="b-tbl-sub">-</p>
       <div class="dl-bar">
-        <button type="button" class="dl-btn" id="b-dl-csv">CSV 내려받기</button>
-        <button type="button" class="dl-btn" id="b-dl-xlsx">엑셀(.xlsx) 내려받기</button>
+        <button type="button" class="dl-btn" id="b-dl-csv" data-member-click="엑셀 내려받기">CSV 내려받기</button>
+        <button type="button" class="dl-btn" id="b-dl-xlsx" data-member-click="엑셀 내려받기">엑셀(.xlsx) 내려받기</button>
         <span class="dl-note">엑셀에는 변동성별 표와 일별 경로가 함께 들어갑니다 (가격은 입력한 단위 숫자)</span>
       </div>
       <div class="table-wrap">
