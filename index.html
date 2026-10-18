@@ -531,7 +531,7 @@
       <div class="stat-card"><div class="stat-label">기초지수 수익률</div><div class="stat-value" id="a1-value">-</div><div class="stat-sub" id="a1-sub"></div></div>
       <div class="stat-card"><div class="stat-label" id="a2-label">단순 배율 기대치</div><div class="stat-value" id="a2-value">-</div><div class="stat-sub" id="a2-sub"></div></div>
       <div class="stat-card accent"><div class="stat-label" id="a3-label">실제 ETF 수익률</div><div class="stat-value" id="a3-value">-</div><div class="stat-sub" id="a3-sub"></div></div>
-      <div class="stat-card dark"><div class="stat-label">변동성으로 잃은 몫</div><div class="stat-value" id="a4-value">-</div><div class="stat-sub" id="a4-sub"></div></div>
+      <div class="stat-card dark"><div class="stat-label" id="a4-label">변동성으로 잃은 몫</div><div class="stat-value" id="a4-value">-</div><div class="stat-sub" id="a4-sub"></div></div>
     </div>
 
     <div class="card">
@@ -547,7 +547,7 @@
       <p class="chart-subtitle" id="a-cmp-sub">-</p>
       <div class="table-wrap">
         <table class="data-table scen-table">
-          <thead><tr><th>배율</th><th>단순 배율 기대</th><th>실제 ETF</th><th>차이</th><th>평가액</th></tr></thead>
+          <thead><tr><th>배율</th><th>단순 배율 기대</th><th>실제 ETF</th><th>차이(총보수 포함)</th><th>평가액</th></tr></thead>
           <tbody id="a-cmp-body"></tbody>
         </table>
       </div>
@@ -1142,7 +1142,7 @@ function renderA() {
   $('a-v-label').textContent = 'MODE 1 · 변동성 손실(음의 복리)';
   $('a-v-main').innerHTML = `지수는 <span class="hl">${spct(idxR)}</span>인데<br>${ls} ETF는 <span class="hl">${spct(etfR)}</span>입니다`;
   let sub = `${scenText(inp)} 기준입니다. 지수에 ${ls}를 곱한 <strong>${spct(simpleR)}</strong>를 기대하기 쉽지만, `;
-  if (sim.dead) sub += `${sim.dead}일째에 하루 손실이 −100%를 넘어 <strong>ETF 가치가 0</strong>이 됩니다. 배율이 높고 하루 등락이 크면 이런 일이 생길 수 있습니다.`;
+  if (sim.dead) sub += `${sim.dead}일째에 하루 손실이 −100% 이하로 떨어져 <strong>ETF 가치가 0</strong>이 됩니다. 배율이 높고 하루 등락이 크면 이런 일이 생길 수 있습니다.`;
   else if (sim.simple <= 0) sub += `이 조건은 단순 계산으로도 원금이 모두 사라지는 수준이고, 실제 ETF도 <strong>${spct(etfR)}</strong>로 거의 전액을 잃습니다.`;
   else if (Math.abs(L - 1) < 1e-9 || L === 0) sub += `배율이 ${ls}이면 변동성 손실은 없고 총보수만 빠집니다.`;
   else if (volLoss < -0.05) sub += `매일 ${ls}씩 움직인 결과가 곱해지며 쌓이는 동안 <strong>${spp(volLoss)}</strong>가 변동성에 깎였습니다${inp.fee > 0 ? `(총보수 ${spp(feeLoss, 2)} 별도)` : ''}.`;
@@ -1159,15 +1159,17 @@ function renderA() {
   $('a3-label').textContent = `실제 ${ls} ETF 수익률`;
   $('a3-value').textContent = spct(etfR);
   $('a3-sub').innerHTML = sim.dead ? `${sim.dead}일째 가치 0` : (amt > 0 ? `평가액 ${wonText(amt * sim.etf)}` : '매일 배율 적용 후 곱해 쌓은 값');
+  $('a4-label').textContent = !sim.dead && volLoss > 0.005 ? '변동성으로 얻은 몫' : '변동성으로 잃은 몫';
   $('a4-value').textContent = sim.dead ? '전액' : spp(volLoss);
-  $('a4-sub').innerHTML = sim.dead ? '하루 −100% 초과로 가치 0'
+  $('a4-sub').innerHTML = sim.dead ? '하루 −100% 이하 손실로 가치 0'
     : `단순 기대 대비${amt > 0 ? ` 약 ${wonText(Math.abs(amt * volLoss / 100))}` : ''} · 총보수로 ${spp(feeLoss, 2)} 별도`;
 
   // 근사식
   const ap = approxEtf(L, sim.idx, sim.sumSq, inp.fee, n);
   const coef = (L * L - L) / 2;
-  const dailyVar = sim.sumSq / n;
-  $('a-approx').innerHTML = `<b>근사식으로 확인하면</b> — 하루 등락폭을 제곱해 ${n}일 동안 더한 값(분산 합계)은 <b>${sim.sumSq.toFixed(4)}</b>(하루 평균 ±${(Math.sqrt(dailyVar) * 100).toFixed(2)}% 수준의 등락)이고, ${ls}의 계수 (배율² − 배율) ÷ 2 = <b>${numFix(coef)}</b>입니다. 둘을 곱하면 ` +
+  const mean = P.rets.reduce((a, r) => a + r, 0) / n;
+  const dailySd = Math.sqrt(P.rets.reduce((a, r) => a + (r - mean) * (r - mean), 0) / n);
+  $('a-approx').innerHTML = `<b>근사식으로 확인하면</b> — 하루 등락폭을 제곱해 ${n}일 동안 더한 값(분산 합계)은 <b>${sim.sumSq.toFixed(4)}</b>${dailySd * 100 >= 0.005 ? `(하루 평균 ±${(dailySd * 100).toFixed(2)}% 수준의 등락)` : '(출렁임 없이 매일 같은 비율로 움직임)'}이고, ${ls}의 계수 (배율² − 배율) ÷ 2 = <b>${numFix(coef)}</b>입니다. 둘을 곱하면 ` +
     `로그 기준 약 <b>${(coef * sim.sumSq * 100).toFixed(1)}%p</b>가 변동성 비용으로 빠진다는 뜻이고, 근사식으로 추정한 ETF 수익률은 <b>${spct((ap - 1) * 100)}</b>(실제 계산 ${spct(etfR)})입니다.` +
     (sim.dead ? ' 단, ETF 가치가 0이 된 경우에는 근사식이 맞지 않습니다.' : '');
 
@@ -1224,7 +1226,7 @@ function renderInsightA() {
   const t = $('insight-title'), d = $('insight-desc');
   if (x.sim.dead) {
     t.textContent = `${ls} ETF는 하루 큰 하락 한 번으로 회복할 수 없는 손실이 날 수 있습니다`;
-    d.innerHTML = `이 조건에서는 하루 손실이 −100%를 넘어 가치가 0이 됐습니다. 실제 상품은 이런 상황을 막기 위한 장치를 두기도 하지만, <strong>배율 × 하루 하락폭</strong>이 그대로 손실로 이어진다는 구조는 같습니다.`;
+    d.innerHTML = `이 조건에서는 하루 손실이 −100% 이하로 떨어져 가치가 0이 됐습니다. 실제 상품은 이런 상황을 막기 위한 장치를 두기도 하지만, <strong>배율 × 하루 하락폭</strong>이 그대로 손실로 이어진다는 구조는 같습니다.`;
   } else if (Math.abs(L - 1) < 1e-9 || L === 0) {
     t.textContent = '1배에서는 변동성 손실이 생기지 않습니다';
     d.innerHTML = `배율이 1이면 ETF는 지수를 그대로 따라가고 총보수만 빠집니다. 배율을 2·3배나 인버스로 바꿔 보면 같은 길에서 결과가 얼마나 달라지는지 바로 보입니다.`;
@@ -1255,25 +1257,26 @@ function renderB() {
   const wave = routeCalc(inp, inp.vol);
   const diffP = wave.price - jumpP, diffR = wave.ret - jumpR;
   const primaryWave = inp.route === 'wave';
+  const volTxt = inp.vol > 0 ? `매일 ±${numFix(inp.vol * 100)}%씩 출렁이며` : '출렁임 없이 매일 같은 비율로 꾸준히';
 
   $('b-v-label').textContent = 'MODE 2 · 지수 목표가 → ETF 가격';
   const target = `지수 ${inp.ti.toLocaleString(undefined, { maximumFractionDigits: 2 })}(${spct(X)})`;
   if (primaryWave) {
     $('b-v-main').innerHTML = `${target}까지 오르내리며 가면<br>${ls} ETF는 약 <span class="hl">${priceText(wave.price)}</span>(${spct(wave.ret)})`;
-    $('b-v-sub').innerHTML = `${inp.dn}거래일(${daysText(inp.dn)}) 동안 매일 ±${numFix(inp.vol * 100)}%씩 출렁이며 간다고 본 값입니다. 하루 만에 곧장 간다면 <strong>${priceText(jumpP)}</strong>(${spct(jumpR)})이라, 가는 길 때문에 <strong>${diffP >= 0 ? '+' : MINUS}${priceText(Math.abs(diffP))}</strong>(${spp(diffR)}) 차이가 납니다.` +
+    $('b-v-sub').innerHTML = `${inp.dn}거래일(${daysText(inp.dn)}) 동안 ${volTxt} 간다고 본 값입니다. 하루 만에 곧장 간다면 <strong>${priceText(jumpP)}</strong>(${spct(jumpR)})이라, 가는 길 때문에 <strong>${diffP >= 0 ? '+' : MINUS}${priceText(Math.abs(diffP))}</strong>(${spp(diffR)}) 차이가 납니다.` +
       (wave.s.dead ? ` 이 경로에서는 ${wave.s.dead}일째 ETF 가치가 0이 됩니다.` : '');
   } else {
     $('b-v-main').innerHTML = `${target}까지 한 번에 곧장 가면<br>${ls} ETF는 <span class="hl">${priceText(jumpP)}</span>(${spct(jumpR)})`;
-    $('b-v-sub').innerHTML = `하루 만에 목표까지 가는 극단적 가정입니다${jumpF === 0 ? '(−100% 아래라 0으로 계산)' : ''}. 현실처럼 ${daysText(inp.dn)} 동안 매일 ±${numFix(inp.vol * 100)}%씩 출렁이며 간다면 <strong>${priceText(wave.price)}</strong>(${spct(wave.ret)})으로, <strong>${diffP >= 0 ? '+' : MINUS}${priceText(Math.abs(diffP))}</strong>(${spp(diffR)}) 차이가 납니다.`;
+    $('b-v-sub').innerHTML = `하루 만에 목표까지 가는 극단적 가정입니다${jumpF === 0 ? '(−100% 이하라 0으로 계산)' : ''}. 현실처럼 ${daysText(inp.dn)} 동안 ${volTxt} 간다면 <strong>${priceText(wave.price)}</strong>(${spct(wave.ret)})으로, <strong>${diffP >= 0 ? '+' : MINUS}${priceText(Math.abs(diffP))}</strong>(${spp(diffR)}) 차이가 납니다.`;
   }
   $('b2-card').className = 'stat-card' + (primaryWave ? '' : ' accent');
   $('b3-card').className = 'stat-card' + (primaryWave ? ' accent' : '');
   $('b1-value').textContent = spct(X);
-  $('b1-sub').innerHTML = `${inp.ci.toLocaleString(undefined, { maximumFractionDigits: 2 })} → ${inp.ti.toLocaleString(undefined, { maximumFractionDigits: 2 })} · 단순 ${ls}면 ${spct(L * X)}`;
+  $('b1-sub').innerHTML = `${inp.ci.toLocaleString(undefined, { maximumFractionDigits: 2 })} → ${inp.ti.toLocaleString(undefined, { maximumFractionDigits: 2 })} · 단순 ${ls}면 ${L * X <= -100 ? `${spct(-100)}(가치 0)` : spct(L * X)}`;
   $('b2-value').textContent = priceShort(jumpP);
   $('b2-sub').innerHTML = `${spct(jumpR)} · 현재가 × (1 + ${ls} × ${spct(X)})`;
   $('b3-value').textContent = wave.s.dead ? '0' : priceShort(wave.price);
-  $('b3-sub').innerHTML = `${spct(wave.ret)} · 일 ±${numFix(inp.vol * 100)}%, ${inp.dn}거래일`;
+  $('b3-sub').innerHTML = `${spct(wave.ret)} · ${inp.vol > 0 ? `일 ±${numFix(inp.vol * 100)}%` : '출렁임 없음'}, ${inp.dn}거래일`;
   $('b4-value').textContent = spp(diffR);
   $('b4-sub').innerHTML = `가격으로 ${diffP >= 0 ? '+' : MINUS}${priceText(Math.abs(diffP))} · 오르내림 − 곧장`;
 
@@ -1390,7 +1393,7 @@ function resultText() {
     lines.push(`기초지수: ${spct(x.idxR, 2)}${amt > 0 ? ' (' + wonText(amt * x.sim.idx) + ')' : ''}`);
     lines.push(`단순 ${ls} 기대: ${spct(x.simpleR, 2)}`);
     lines.push(`실제 ${ls} ETF: ${x.sim.dead ? '가치 0 (' + x.sim.dead + '일째)' : spct(x.etfR, 2)}${amt > 0 && !x.sim.dead ? ' (' + wonText(amt * x.sim.etf) + ')' : ''}`);
-    if (!x.sim.dead) lines.push(`변동성으로 잃은 몫: ${spp(x.volLoss, 2)} · 총보수 ${spp(x.feeLoss, 2)}`);
+    if (!x.sim.dead) lines.push(`변동성으로 ${x.volLoss > 0.005 ? '얻은' : '잃은'} 몫: ${spp(x.volLoss, 2)} · 총보수 ${spp(x.feeLoss, 2)}`);
   } else if (lastB) {
     const x = lastB, ls = levShort(x.inp.lev);
     lines.push('[지수 목표가 → 레버리지 ETF 가격 환산]');
